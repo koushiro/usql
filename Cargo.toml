@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "usql",
+    "usql-lexer",
+    "usql-parser",
+]
+resolver = "2"
