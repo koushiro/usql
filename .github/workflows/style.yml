@@ -10,6 +10,7 @@ env:
 
 jobs:
   style:
+    name: Code Style
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Sources
