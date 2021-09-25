@@ -11,7 +11,8 @@ repository = "https://github.com/koushiro/usql"
 description = "Universal SQL Lexer"
 
 [features]
-default = []
+default = ["std"]
+std = []
 
 [dependencies]
 
