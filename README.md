@@ -2,7 +2,7 @@
 
 [![ga-svg]][ga-url]
 
-[ga-svg]: https://github.com/koushiro/usql/workflows/test/badge.svg
+[ga-svg]: https://github.com/koushiro/usql/workflows/Test/badge.svg
 [ga-url]: https://github.com/koushiro/usql/actions
 
 uSQL is a universal SQL Lexer and Parser, written in Rust.
