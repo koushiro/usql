@@ -1,4 +1,4 @@
-name: coverage
+name: Coverage
 
 on:
   push:
@@ -10,7 +10,6 @@ env:
 
 jobs:
   coverage:
-    name: Code Coverage
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Sources
