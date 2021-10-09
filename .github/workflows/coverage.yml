@@ -1,4 +1,4 @@
-name: Coverage
+name: coverage
 
 on:
   push:
@@ -10,8 +10,8 @@ env:
 
 jobs:
   coverage:
-    name: Code Coverage
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Sources
         uses: actions/checkout@v2
