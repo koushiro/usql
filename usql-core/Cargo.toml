@@ -1,21 +1,24 @@
 [package]
-name = "usql-lexer"
-version = "0.1.0-dev"
+name = "usql-core"
+version = "0.0.0"
 authors = ["koushiro <koushiro.cqx@gmail.com>"]
 edition = "2021"
 rust-version = "1.56"
 readme = "README.md"
 license = "Apache-2.0"
 
-documentation = "https://docs.rs/usql-lexer"
+documentation = "https://docs.rs/usql-core"
 repository = "https://github.com/koushiro/usql"
-description = "Universal SQL lexer"
+description = "uSQL core types and traits"
 
 [features]
 default = ["std"]
 std = []
 
+mysql = []
+postgres = []
+sqlite = []
+
 [dependencies]
-usql-core = { path = "../usql-core" }
 
 [dev-dependencies]

@@ -1,8 +1,8 @@
 #[cfg(not(feature = "std"))]
-use alloc::string::String;
+use alloc::{string::String, vec::Vec};
 use core::fmt;
 
-use crate::keywords::KeywordDef;
+use usql_core::KeywordDef;
 
 /// SQL token
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -26,7 +26,10 @@ pub enum Token<K> {
     /// An optionally quoted SQL identifier.
     Ident(Ident),
     /// A keyword.
-    Keyword(K),
+    Keyword(K, &'static str),
+
+    /// A character that could not be tokenized.
+    Other(char),
 
     /// Comma `,`
     Comma,
@@ -65,6 +68,11 @@ pub enum Token<K> {
     /// Greater than or equal `>=`
     GreaterThanOrEqual,
 
+    /// Left Shift `<<`
+    LeftShift,
+    /// Right Shift `>>`
+    RightShift,
+
     /// Plus `+`
     Plus,
     /// Minus `-`
@@ -98,9 +106,6 @@ pub enum Token<K> {
     Sharp,
     /// At `@`
     At,
-
-    /// A character that could not be tokenized.
-    Other(char),
 }
 
 impl<K: fmt::Display> fmt::Display for Token<K> {
@@ -114,7 +119,7 @@ impl<K: fmt::Display> fmt::Display for Token<K> {
             Token::BitString(s) => write!(f, "B'{}'", s),
             Token::HexString(s) => write!(f, "X'{}'", s),
             Token::Ident(ident) => write!(f, "{}", ident),
-            Token::Keyword(keyword) => write!(f, "{}", keyword),
+            Token::Keyword(keyword, _) => write!(f, "{}", keyword),
             Token::Comma => f.write_str(","),
             Token::SemiColon => f.write_str(";"),
             Token::Period => f.write_str("."),
@@ -132,6 +137,8 @@ impl<K: fmt::Display> fmt::Display for Token<K> {
             Token::LessThanOrEqual => f.write_str("<="),
             Token::GreaterThan => f.write_str(">"),
             Token::GreaterThanOrEqual => f.write_str(">="),
+            Token::LeftShift => f.write_str("<<"),
+            Token::RightShift => f.write_str(">>"),
             Token::Plus => f.write_str("+"),
             Token::Minus => f.write_str("-"),
             Token::Asterisk => f.write_str("*"),
@@ -159,7 +166,7 @@ impl<K: KeywordDef> Token<K> {
         let keyword_uppercase = keyword.as_ref().to_uppercase();
         K::KEYWORD_STRINGS
             .binary_search(&keyword_uppercase.as_str())
-            .map(|x| Self::Keyword(K::KEYWORDS[x]))
+            .map(|x| Self::Keyword(K::KEYWORDS[x], K::KEYWORD_STRINGS[x]))
             .ok()
     }
 
@@ -196,6 +203,7 @@ impl fmt::Display for Whitespace {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Comment {
     SingleLine { prefix: String, comment: String },
+    // TODO: Not support now
     MultiLine(String),
 }
 

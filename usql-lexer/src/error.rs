@@ -2,22 +2,47 @@
 use alloc::string::String;
 use core::fmt;
 
-/// Lexer error
+/// Location info for input.
+#[derive(Copy, Clone, Debug)]
 #[doc(hidden)]
-#[derive(Clone, Debug, PartialEq)]
-pub struct LexerError {
-    pub message: String,
+pub struct Location {
     pub line: u64,
-    pub col: u64,
+    pub column: u64,
+}
+
+impl fmt::Display for Location {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Line: {}, Column: {}", self.line, self.column)
+    }
+}
+
+impl Default for Location {
+    fn default() -> Self {
+        Self { line: 1, column: 1 }
+    }
+}
+
+impl Location {
+    pub(crate) fn into_error(self, message: impl Into<String>) -> LexerError {
+        LexerError {
+            message: message.into(),
+            location: self,
+        }
+    }
+}
+
+/// Lexer error
+#[derive(Clone, Debug)]
+pub struct LexerError {
+    /// The specified error message.
+    pub message: String,
+    /// The location info of error message.
+    pub location: Location,
 }
 
 impl fmt::Display for LexerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} at Line: {}, Column {}",
-            self.message, self.line, self.col
-        )
+        write!(f, "{} at {}", self.message, self.location)
     }
 }
 

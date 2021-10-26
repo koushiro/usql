@@ -62,7 +62,7 @@ macro_rules! define_keyword {
 
         $( $crate::kw_def!($keyword $(= $string_keyword)?); )*
 
-        impl $crate::keywords::KeywordDef for $name {
+        impl $crate::keyword::KeywordDef for $name {
             const KEYWORDS: &'static [Self] = &[
                 $(Self::$keyword),*
             ];
@@ -72,19 +72,3 @@ macro_rules! define_keyword {
         }
     }
 }
-
-/// ANSI SQL-2016 keywords.
-mod ansi;
-/// MariaDB keywords.
-mod mariadb;
-/// MySQL keywords.
-mod mysql;
-/// PostgreSQL keywords.
-mod postgresql;
-/// SQLite keywords.
-mod sqlite;
-
-pub use self::{
-    ansi::AnsiKeyword, mariadb::MariaKeyword, mysql::MysqlKeyword, postgresql::PostgresKeyword,
-    sqlite::SqliteKeyword,
-};
