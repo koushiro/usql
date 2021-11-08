@@ -9,10 +9,7 @@ uSQL is a universal SQL Lexer and Parser, written in Rust.
 
 ## License
 
-Licensed under either of
-
-- [Apache License, Version 2.0](LICENSE-APACHE)
-- [MIT License](LICENSE-MIT)
+- [Apache License, Version 2.0](LICENSE)
 
 at your option.
 
