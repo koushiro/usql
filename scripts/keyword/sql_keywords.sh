@@ -54,8 +54,8 @@ echo 'SQLite: DONE'
 
 # =============================================================================
 
-echo 'Merge and Deduplication'
+#echo 'Merge and Deduplication'
 
-cat sql2016.txt postgresql.txt mariadb.txt mysql.txt sqlite.txt | sort | uniq > total.txt
+#cat sql2016.txt postgresql.txt mariadb.txt mysql.txt sqlite.txt | sort | uniq > total.txt
 
-echo 'ALL: DONE'
+#echo 'ALL: DONE'
