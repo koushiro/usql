@@ -166,7 +166,7 @@ impl<K: KeywordDef> Token<K> {
         let keyword_uppercase = keyword.as_ref().to_uppercase();
         K::KEYWORD_STRINGS
             .binary_search(&keyword_uppercase.as_str())
-            .map(|x| Self::Keyword(K::KEYWORDS[x], K::KEYWORD_STRINGS[x]))
+            .map(|x| Self::Keyword(K::KEYWORDS[x].clone(), K::KEYWORD_STRINGS[x]))
             .ok()
     }
 

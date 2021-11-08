@@ -1,3 +1,5 @@
+// Modified based on the https://github.com/sqlparser-rs/sqlparser-rs/blob/main/src/keywords.rs
+
 /// Defines a string constant for a single keyword: `kw_def!(SELECT);`,
 /// which expands to `const SELECT: &'static str = "SELECT";`
 #[macro_export]

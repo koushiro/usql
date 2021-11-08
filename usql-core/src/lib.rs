@@ -15,10 +15,10 @@ mod dialect;
 
 /// ANSI SQL-2016.
 pub mod ansi;
-/// MySQL.
+/// MySQL 8.0.
 #[cfg(feature = "mysql")]
 pub mod mysql;
-/// PostgreSQL.
+/// PostgreSQL 13.
 #[cfg(feature = "postgres")]
 pub mod postgres;
 /// SQLite.

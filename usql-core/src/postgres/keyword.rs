@@ -3,7 +3,7 @@ define_keyword! {
     ///
     /// See [PostgreSQL] documentation for details.
     ///
-    /// [PostgreSQL]: https://www.postgresql.org/docs/current/sql-keywords-appendix.html
+    /// [PostgreSQL]: https://www.postgresql.org/docs/13/sql-keywords-appendix.html
     PostgresKeyword => {
         ALL,
         ANALYSE,

@@ -3,17 +3,17 @@ mod keyword;
 pub use self::keyword::MysqlKeyword;
 use crate::dialect::{Dialect, DialectLexerConf, DialectParserConf};
 
-///
+/// The MySQL dialect.
 #[derive(Debug)]
 pub struct MysqlDialect;
 
-///
+/// The lexer configuration of MySQL dialect.
 #[derive(Debug)]
 pub struct MysqlLexerConfig {}
 
 impl DialectLexerConf for MysqlLexerConfig {}
 
-///
+/// The parser configuration of MySQL dialect.
 #[derive(Debug)]
 pub struct MysqlParserConfig {}
 
