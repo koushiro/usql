@@ -19,11 +19,7 @@ echo 'SQL-2016: DONE'
 
 echo 'Getting PostgreSQL keywords...'
 
-<<<<<<< HEAD
-curl -s https://www.postgresql.org/docs/current/sql-keywords-appendix.html | pcregrep -M '<td><code class="token">.*</code></td>.*\n.*<td>reserved' | \
-=======
 curl -s https://www.postgresql.org/docs/13/sql-keywords-appendix.html | pcregrep -M '<td><code class="token">.*</code></td>.*\n.*<td>reserved' | \
->>>>>>> upstream/master
   grep -oe '>\w*</code>' | awk -F ">|<" '{print $2}' | sort | uniq > postgresql.txt
 
 echo 'PostgreSQL: DONE'
