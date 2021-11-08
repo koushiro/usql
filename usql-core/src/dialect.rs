@@ -15,11 +15,7 @@ pub trait Dialect: Debug + Any {
 }
 
 ///
-pub trait DialectLexerConf: Debug {
-
-}
+pub trait DialectLexerConf: Debug {}
 
 ///
-pub trait DialectParserConf: Debug {
-
-}
+pub trait DialectParserConf: Debug {}

@@ -86,13 +86,41 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                 // whitespace
                 ' ' | '\n' | '\t' | '\r' => Ok(self.tokenize_whitespace().map(Token::Whitespace)),
                 // national string literal
-                'N' | 'B' | 'X' => {
-                    todo!()
+                'N' => {
+                    self.iter.next();
+                    match self.iter.peek() {
+                        // N'...' - a <national character string literal>
+                        Some('\'') => Ok(Some(Token::NationalString(
+                            self.tokenize_single_quoted_string()?,
+                        ))),
+                        // regular identifier starting with an "N"
+                        _ => todo!(),
+                    }
                 }
                 // bit string literal
-                // 'B' => { todo!() }
+                'B' => {
+                    self.iter.next();
+                    match self.iter.peek() {
+                        // B'...' - a <binary character string literal>
+                        Some('\'') => Ok(Some(Token::BitString(
+                            self.tokenize_single_quoted_string()?,
+                        ))),
+                        // regular identifier starting with an "B"
+                        _ => todo!(),
+                    }
+                }
                 // hex string literal
-                // 'X' => { todo!() }
+                'X' => {
+                    self.iter.next();
+                    match self.iter.peek() {
+                        // X'...' - a <hexadecimal character string literal>
+                        Some('\'') => Ok(Some(Token::HexString(
+                            self.tokenize_single_quoted_string()?,
+                        ))),
+                        // regular identifier starting with an "X"
+                        _ => todo!(),
+                    }
+                }
                 _ => self.tokenize_symbol(),
             },
             None => Ok(None),

@@ -222,7 +222,7 @@ pub struct Ident {
     /// The value of the token, without the enclosing quotes, and with the
     /// escape sequences (if any) processed.
     pub value: String,
-    /// An identifier can be "quoted" (&lt;delimited identifier> in ANSI parlance).
+    /// An identifier can be "quoted" (<delimited identifier> in ANSI parlance).
     /// The standard and most implementations allow using double quotes for this,
     /// but some implementations support other quoting styles as well.
     /// e.g. MySQL also use backtick (`) as the identifier quote character.
@@ -234,7 +234,7 @@ impl fmt::Display for Ident {
         match self.quote {
             None => f.write_str(&self.value),
             Some(q) if q == '"' || q == '`' => write!(f, "{}{}{}", q, self.value, q),
-            Some(q) => panic!("Unsupported quote character {} for identifier!", q),
+            Some(q) => panic!("Unsupported quote character {} for SQL identifier!", q),
         }
     }
 }

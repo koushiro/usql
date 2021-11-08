@@ -24,4 +24,3 @@ impl Dialect for MysqlDialect {
     type LexerConf = MysqlLexerConfig;
     type ParserConf = MysqlParserConfig;
 }
-

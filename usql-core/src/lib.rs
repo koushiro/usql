@@ -28,4 +28,7 @@ pub mod postgres;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
 
-pub use self::{dialect::Dialect, keyword::KeywordDef};
+pub use self::{
+    dialect::{Dialect, DialectLexerConf, DialectParserConf},
+    keyword::KeywordDef,
+};

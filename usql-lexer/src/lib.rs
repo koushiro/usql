@@ -9,10 +9,7 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-// mod config;
 mod error;
-// /// The keywords definition.
-// pub mod keywords;
 mod lexer;
 mod tokens;
 
