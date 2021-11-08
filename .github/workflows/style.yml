@@ -1,4 +1,4 @@
-name: Style
+name: style
 
 on:
   push:
@@ -10,8 +10,8 @@ env:
 
 jobs:
   style:
-    name: Code Style
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Sources
         uses: actions/checkout@v2
