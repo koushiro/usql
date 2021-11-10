@@ -82,7 +82,7 @@ pub enum Expr {
     ///
     /// Note we only recognize a complete single expression as `<condition>`,
     /// not `< 0` nor `1, 2, 3` as allowed in a `<simple when clause>` per
-    /// <https://jakewheat.github.io/sql-overview/sql-2011-foundation-grammar.html#simple-when-clause>
+    /// <https://jakewheat.github.io/sql-overview/sql-2016-foundation-grammar.html#simple-when-clause>
     Case(CaseExpr),
 
     /// `<expr> COLLATE collation`
@@ -290,7 +290,7 @@ impl fmt::Display for BetweenExpr {
 ///
 /// Note we only recognize a complete single expression as `<condition>`,
 /// not `< 0` nor `1, 2, 3` as allowed in a `<simple when clause>` per
-/// <https://jakewheat.github.io/sql-overview/sql-2011-foundation-grammar.html#simple-when-clause>
+/// <https://jakewheat.github.io/sql-overview/sql-2016-foundation-grammar.html#simple-when-clause>
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]

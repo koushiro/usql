@@ -229,7 +229,7 @@ impl fmt::Display for Interval {
                 assert!(self.tailing_field.is_none());
                 write!(
                     f,
-                    "INTERVAL '{}' SECOND ({}, {})",
+                    "INTERVAL '{}' SECOND({}, {})",
                     escape_single_quote_string(&self.value),
                     leading_precision,
                     fractional_seconds_precision
@@ -241,13 +241,13 @@ impl fmt::Display for Interval {
                     write!(f, " {}", leading_field)?;
                 }
                 if let Some(leading_precision) = &self.leading_precision {
-                    write!(f, " ({})", leading_precision)?;
+                    write!(f, "({})", leading_precision)?;
                 }
                 if let Some(tailing_field) = &self.tailing_field {
                     write!(f, " TO {}", tailing_field)?;
                 }
                 if let Some(fractional_seconds_precision) = &self.fractional_seconds_precision {
-                    write!(f, " ({})", fractional_seconds_precision)?;
+                    write!(f, "({})", fractional_seconds_precision)?;
                 }
             }
         }
@@ -350,7 +350,7 @@ mod tests {
         };
         assert_eq!(
             Literal::Interval(interval).to_string(),
-            "INTERVAL '2021' YEAR (4)"
+            "INTERVAL '2021' YEAR(4)"
         );
 
         let interval = Interval {
@@ -362,7 +362,7 @@ mod tests {
         };
         assert_eq!(
             Literal::Interval(interval).to_string(),
-            "INTERVAL '1:1:1' SECOND (4, 2)"
+            "INTERVAL '1:1:1' SECOND(4, 2)"
         );
 
         let interval = Interval {
@@ -374,7 +374,7 @@ mod tests {
         };
         assert_eq!(
             Literal::Interval(interval).to_string(),
-            "INTERVAL '1:1:1' HOUR TO SECOND (2)"
+            "INTERVAL '1:1:1' HOUR TO SECOND(2)"
         );
     }
 }
