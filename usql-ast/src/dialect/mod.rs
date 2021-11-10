@@ -1,7 +1,11 @@
-mod ansi;
+/// The ANSI dialect.
+pub mod ansi;
+/// The MySQL dialect.
 #[cfg(feature = "mysql")]
-mod mysql;
+pub mod mysql;
+/// The PostgreSQL dialect.
 #[cfg(feature = "postgres")]
-mod postgres;
+pub mod postgres;
+/// The SQLite dialect.
 #[cfg(feature = "sqlite")]
-mod sqlite;
+pub mod sqlite;

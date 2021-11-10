@@ -15,16 +15,16 @@ pub use self::{
     query::*,
 };
 use crate::{
-    types::{DataType, DateTimeField, Ident, ObjectName, Value},
+    types::{DataType, DateTimeField, Ident, Literal, ObjectName},
     utils::{display_comma_separated, display_separated, escape_single_quote_string},
 };
 
-///
+/// SQL expression type.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Expr {
     /// A literal value, such as string, number, date.
-    Value(Value),
+    Literal(Literal),
 
     /// A constant of form `<data_type> 'value'`.
     /// This can represent ANSI SQL `DATE`, `TIME`, and `TIMESTAMP` literals (such as `DATE '2020-01-01'`),
@@ -115,7 +115,7 @@ pub enum Expr {
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Value(v) => write!(f, "{}", v),
+            Self::Literal(v) => write!(f, "{}", v),
             Self::TypedString { data_type, value } => {
                 write!(f, "{} '{}'", data_type, escape_single_quote_string(value))
             }

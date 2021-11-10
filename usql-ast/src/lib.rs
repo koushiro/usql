@@ -11,7 +11,7 @@ extern crate alloc;
 
 mod dialect;
 mod expression;
-// mod statement;
+mod statement;
 mod types;
 mod utils;
 
