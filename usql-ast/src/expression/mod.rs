@@ -58,12 +58,12 @@ pub enum Expr {
     /// `IS [NOT] DISTINCT FROM` operator
     IsDistinctFrom(IsDistinctFromExpr),
 
-    /// Unary operation e.g. `NOT foo`
+    /// Unary operation, e.g. `NOT foo`
     UnaryOp(UnaryOpExpr),
-    /// Binary operation e.g. `1 + 1` or `foo > bar`
+    /// Binary operation, e.g. `1 + 1` or `foo > bar`
     BinaryOp(BinaryOpExpr),
 
-    /// `<expr> [ NOT ] IN (val1, val2, ...)`
+    /// `<expr> [ NOT ] IN (expr1, expr2, ...)`
     InList(InListExpr),
 
     /// `<expr> [ NOT ] IN (SELECT ...)`
@@ -87,6 +87,9 @@ pub enum Expr {
     //  TRY_CAST differs from CAST in the choice of how to implement invalid conversions
     Cast(CastExpr),
 
+    /// Scalar function call e.g. `COUNT(DISTINCT x)`
+    Function(Function),
+
     /// EXTRACT(DateTimeField FROM <expr>)
     Extract(ExtractExpr),
 
@@ -101,9 +104,6 @@ pub enum Expr {
     /// LISTAGG( [ DISTINCT ] <expr> [, <separator> ] [ON OVERFLOW <on_overflow>] ) )
     /// [ WITHIN GROUP (ORDER BY <within_group1>[, ...] ) ]
     ListAgg(ListAggExpr),
-
-    /// Scalar function call e.g. `LEFT(foo, 5)`
-    Function(Function),
 }
 
 impl fmt::Display for Expr {
@@ -127,11 +127,11 @@ impl fmt::Display for Expr {
             Self::Case(expr) => write!(f, "{}", expr),
             Self::Collate(expr) => write!(f, "{}", expr),
             Self::Cast(expr) => write!(f, "{}", expr),
+            Self::Function(func) => write!(f, "{}", func),
             Self::Extract(expr) => write!(f, "{}", expr),
             Self::Substring(expr) => write!(f, "{}", expr),
             Self::Trim(expr) => write!(f, "{}", expr),
             Self::ListAgg(expr) => write!(f, "{}", expr),
-            Self::Function(func) => write!(f, "{}", func),
         }
     }
 }
@@ -209,7 +209,7 @@ impl fmt::Display for BinaryOpExpr {
     }
 }
 
-/// `<expr> [ NOT ] IN (val1, val2, ...)`
+/// `<expr> [ NOT ] IN (expr1, expr2, ...)`
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]

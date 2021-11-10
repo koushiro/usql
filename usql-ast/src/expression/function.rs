@@ -16,11 +16,11 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Function {
+    // aggregate functions may specify e.g. `COUNT(DISTINCT x)`
+    pub distinct: bool,
     pub name: ObjectName,
     pub args: Vec<FunctionArg>,
     pub over: Option<WindowSpec>,
-    // aggregate functions may specify eg `COUNT(DISTINCT x)`
-    pub distinct: bool,
 }
 
 impl fmt::Display for Function {
