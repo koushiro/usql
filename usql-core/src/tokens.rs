@@ -209,7 +209,7 @@ pub enum Comment {
         /// The prefix of the comment.
         prefix: String,
         /// The comment text.
-        comment: String
+        comment: String,
     },
     // TODO: Not support now
     /// Multiple line comment.
