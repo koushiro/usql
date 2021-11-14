@@ -13,9 +13,9 @@ description = "Universal SQL lexer"
 
 [features]
 default = ["std"]
-std = []
+std = ["usql-core/std"]
 
 [dependencies]
-usql-core = { path = "../usql-core" }
+usql-core = { path = "../usql-core", default-features = false }
 
 [dev-dependencies]

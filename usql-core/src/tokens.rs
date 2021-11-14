@@ -1,11 +1,12 @@
 #[cfg(not(feature = "std"))]
-use alloc::{string::String, vec::Vec};
+use alloc::string::String;
 use core::fmt;
 
-use usql_core::KeywordDef;
+use crate::dialect::KeywordDef;
 
 /// SQL token
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Token<K> {
     /// Whitespace (space, newline, tab).
     Whitespace(Whitespace),
@@ -182,6 +183,7 @@ impl<K: KeywordDef> Token<K> {
 /// Whitespace token
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Whitespace {
     Space,
     Newline,
@@ -199,11 +201,17 @@ impl fmt::Display for Whitespace {
 }
 
 /// Comment token
-#[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Comment {
-    SingleLine { prefix: String, comment: String },
-    // TODO: Not support now
+    /// Single line comment.
+    SingleLine {
+        /// The prefix of the comment.
+        prefix: String,
+        /// The comment text.
+        comment: String,
+    },
+    /// Multiple line comment.
     MultiLine(String),
 }
 
@@ -218,6 +226,7 @@ impl fmt::Display for Comment {
 
 /// An optionally quoted SQL identifier
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Ident {
     /// The value of the token, without the enclosing quotes, and with the
     /// escape sequences (if any) processed.
