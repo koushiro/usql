@@ -9,12 +9,14 @@ pub struct MysqlDialect;
 
 /// The lexer configuration of MySQL dialect.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MysqlLexerConfig {}
 
 impl DialectLexerConf for MysqlLexerConfig {}
 
 /// The parser configuration of MySQL dialect.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MysqlParserConfig {}
 
 impl DialectParserConf for MysqlParserConfig {}
