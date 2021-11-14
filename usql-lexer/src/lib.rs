@@ -11,10 +11,8 @@ extern crate alloc;
 
 mod error;
 mod lexer;
-mod tokens;
 
 pub use self::{
     error::{LexerError, Location},
     lexer::Lexer,
-    tokens::{Comment, Ident, Token, Whitespace},
 };

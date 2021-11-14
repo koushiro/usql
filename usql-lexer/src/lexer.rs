@@ -2,12 +2,9 @@
 use alloc::{string::String, vec, vec::Vec};
 use core::{iter::Peekable, str::Chars};
 
-use usql_core::Dialect;
+use usql_core::{Comment, Dialect, Token, Whitespace};
 
-use crate::{
-    error::{LexerError, Location},
-    tokens::{Comment, Token, Whitespace},
-};
+use crate::error::{LexerError, Location};
 
 /// SQL Lexer
 pub struct Lexer<'a, D: Dialect> {
