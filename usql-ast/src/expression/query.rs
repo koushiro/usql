@@ -6,8 +6,8 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    expression::{Expr, FunctionArg},
-    types::{Ident, ObjectName},
+    expression::*,
+    types::*,
     utils::display_comma_separated,
 };
 
@@ -18,9 +18,8 @@ use crate::{
 pub struct Query {
     /// WITH (common table expressions, or CTEs)
     pub with: Option<With>,
-
-    // /// SELECT or UNION / EXCEPT / INTERSECT
-    // pub body: SetExpr,
+    /// SELECT or UNION / EXCEPT / INTERSECT
+    pub body: QueryBody,
     /// `ORDER BY <expr> [ ASC | DESC ] [ NULLS { FIRST | LAST } ] [, ...]`
     pub order_by: Vec<OrderBy>,
     /// `LIMIT { <N> | ALL }`
@@ -36,7 +35,7 @@ impl fmt::Display for Query {
         if let Some(with) = &self.with {
             write!(f, "{} ", with)?;
         }
-        // write!(f, "{}", self.body)?;
+        write!(f, "{}", self.body)?;
         if !self.order_by.is_empty() {
             write!(f, " ORDER BY {}", display_comma_separated(&self.order_by))?;
         }
@@ -54,8 +53,8 @@ impl fmt::Display for Query {
 }
 
 /// A restricted variant of `SELECT` (without CTEs/`ORDER BY`), which may
-/// appear either as the only body item of an `SQLQuery`, or as an operand
-/// to a set operation like `UNION`.
+/// appear either as the only body item of an `Query`, or as an operand to a
+/// set operation like `UNION`.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Select {
@@ -247,11 +246,11 @@ impl fmt::Display for Join {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum JoinOperator {
+    CrossJoin,
     Inner(JoinConstraint),
     LeftOuter(JoinConstraint),
     RightOuter(JoinConstraint),
     FullOuter(JoinConstraint),
-    CrossJoin,
 }
 
 ///
@@ -294,7 +293,7 @@ impl JoinConstraint {
 // Optional clause
 // ================================================================================================
 
-///
+/// With clause.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -337,12 +336,16 @@ impl fmt::Display for Cte {
     }
 }
 
-/// An `ORDER BY` expression: `ORDER BY <expr> [ASC | DESC] [NULLS FIRST | NULLS LAST]`
+/// `ORDER BY` clause
+///
+/// ```txt
+/// <expr> [ASC | DESC] [NULLS FIRST | NULLS LAST]
+/// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct OrderBy {
-    #[doc(hidden)]
-    pub expr: Expr,
+    /// Order by expression
+    pub expr: Box<Expr>,
     /// Optional `ASC` or `DESC`
     pub asc: Option<bool>,
     /// Optional `NULLS FIRST` or `NULLS LAST`
@@ -366,30 +369,45 @@ impl fmt::Display for OrderBy {
     }
 }
 
+/// Limit clause (Not-standard).
 ///
+/// ```txt
+/// LIMIT [ offset, ] row_count
+/// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Limit {}
+pub struct Limit {
+    pub offset: Option<Expr>,
+    pub count: Expr,
+}
 
 impl fmt::Display for Limit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        todo!()
+        if let Some(offset) = &self.offset {
+            write!(f, "LIMIT {},{}", offset, self.count)
+        } else {
+            write!(f, "LIMIT {}", self.count)
+        }
     }
 }
 
-/// `OFFSET <N> [ { ROW | ROWS } ]`
+/// Offset clause.
+///
+/// ```txt
+/// OFFSET <offset> [ { ROW | ROWS } ]
+/// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Offset {
-    pub value: Expr,
+    pub offset: Expr,
     pub rows: OffsetRows,
 }
 
 impl fmt::Display for Offset {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "OFFSET {}{}", self.value, self.rows)
+        write!(f, "OFFSET {}{}", self.offset, self.rows)
     }
 }
 
@@ -408,18 +426,23 @@ impl fmt::Display for OffsetRows {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             OffsetRows::None => Ok(()),
-            OffsetRows::Row => write!(f, " ROW"),
-            OffsetRows::Rows => write!(f, " ROWS"),
+            OffsetRows::Row => f.write_str(" ROW"),
+            OffsetRows::Rows => f.write_str(" ROWS"),
         }
     }
 }
 
-/// `FETCH { FIRST | NEXT } <N> [ PERCENT ] { ROW | ROWS } | { ONLY | WITH TIES }`
+/// Fetch first clause.
+///
+/// ```txt
+/// FETCH { FIRST | NEXT } <row> [ PERCENT ] { ROW | ROWS } | { ONLY | WITH TIES }
+/// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Fetch {
     pub quantity: Option<Expr>,
+    /// Flag indicates that if the quantity is percentage.
     pub percent: bool,
     pub with_ties: bool,
 }

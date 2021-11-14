@@ -15,4 +15,4 @@ mod statement;
 mod types;
 mod utils;
 
-pub use self::{dialect::*, expression::*, types::*};
+pub use self::{dialect::*, expression::*, statement::*, types::*};

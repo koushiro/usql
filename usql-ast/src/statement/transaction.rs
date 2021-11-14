@@ -1,9 +1,57 @@
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 use core::fmt;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use crate::utils::display_comma_separated;
+
+/// The `START TRANSACTION ...` statement.
 ///
+/// ```txt
+/// { START TRANSACTION | BEGIN [ TRANSACTION | WORK ] } [ <mode>, ... ]
+/// ```
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct StartTransactionStmt {
+    /// The transaction modes.
+    pub modes: Vec<TransactionMode>,
+}
+
+impl fmt::Display for StartTransactionStmt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("START TRANSACTION")?;
+        if !self.modes.is_empty() {
+            write!(f, " {}", display_comma_separated(&self.modes))?;
+        }
+        Ok(())
+    }
+}
+
+/// The `SET TRANSACTION ...` statement.
+///
+/// ```txt
+/// SET TRANSACTION [ <mode>, ... ]
+/// ```
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct SetTransactionStmt {
+    /// The transaction modes.
+    pub modes: Vec<TransactionMode>,
+}
+
+impl fmt::Display for SetTransactionStmt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("SET TRANSACTION")?;
+        if !self.modes.is_empty() {
+            write!(f, " {}", display_comma_separated(&self.modes))?;
+        }
+        Ok(())
+    }
+}
+
+/// The mode of transaction.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -13,15 +61,15 @@ pub enum TransactionMode {
 }
 
 impl fmt::Display for TransactionMode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::AccessMode(access_mode) => write!(f, "{}", access_mode),
-            Self::IsolationLevel(iso_level) => write!(f, "ISOLATION LEVEL {}", iso_level),
+            Self::AccessMode(mode) => write!(f, "{}", mode),
+            Self::IsolationLevel(level) => write!(f, "ISOLATION LEVEL {}", level),
         }
     }
 }
 
-///
+/// The access mode of transaction.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -39,7 +87,7 @@ impl fmt::Display for TransactionAccessMode {
     }
 }
 
-///
+/// The isolation level of transaction.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -58,5 +106,51 @@ impl fmt::Display for TransactionIsolationLevel {
             Self::RepeatableRead => "REPEATABLE READ",
             Self::Serializable => "SERIALIZABLE",
         })
+    }
+}
+
+/// The `COMMIT ...` statement.
+///
+/// ```txt
+/// COMMIT [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ]
+/// ```
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct CommitTransactionStmt {
+    /// Flag to indicate whether a new transaction is immediately started with
+    /// the same transaction characteristics as the just finished one.
+    pub and_chain: bool,
+}
+
+impl fmt::Display for CommitTransactionStmt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "COMMIT{}",
+            if self.and_chain { " AND CHAIN" } else { "" }
+        )
+    }
+}
+
+/// The `ROLLBACK ...` statement.
+///
+/// ```txt
+/// ROLLBACK [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ]
+/// ```
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct RollbackTransactionStmt {
+    /// Flag to indicate whether a new transaction is immediately started with
+    /// the same transaction characteristics as the just finished one.
+    pub and_chain: bool,
+}
+
+impl fmt::Display for RollbackTransactionStmt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "ROLLBACK{}",
+            if self.and_chain { " AND CHAIN" } else { "" }
+        )
     }
 }

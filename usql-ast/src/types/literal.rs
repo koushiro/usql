@@ -51,7 +51,7 @@ impl fmt::Display for Literal {
                     f.write_str("FALSE")
                 }
             }
-            Self::Number(v) => write!(f, "{}", v),
+            Self::Number(v) => v.fmt(f),
             Self::String(v) => write!(f, "'{}'", escape_single_quote_string(v)),
             Self::NationalString(v) => write!(f, "N'{}'", v),
             Self::BitString(v) => write!(f, "B'{}'", v),
@@ -59,7 +59,7 @@ impl fmt::Display for Literal {
             Self::Date(v) => write!(f, "DATE '{}'", v),
             Self::Time(v) => write!(f, "TIME '{}'", v),
             Self::Timestamp(v) => write!(f, "TIMESTAMP '{}'", v),
-            Self::Interval(interval) => write!(f, "{}", interval),
+            Self::Interval(interval) => interval.fmt(f),
         }
     }
 }

@@ -3,7 +3,7 @@ mod operator;
 mod query;
 
 #[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, string::String, vec::Vec};
+use alloc::{boxed::Box, vec::Vec};
 use core::fmt;
 
 #[cfg(feature = "serde")]

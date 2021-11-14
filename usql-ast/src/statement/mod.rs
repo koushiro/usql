@@ -1,14 +1,13 @@
+mod ddl;
+mod dml;
 mod transaction;
 
-#[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, vec::Vec};
 use core::fmt;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-pub use self::transaction::*;
-use crate::expression::Query;
+pub use self::{ddl::*, dml::*, transaction::*};
 
 /// A top-level statement (SELECT, INSERT, CREATE, etc.)
 #[doc(hidden)]
@@ -16,186 +15,85 @@ use crate::expression::Query;
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Stmt {
     // ========================================================================
-    CreateDatabase(CreateDatabaseStmt),
-    CreateTable(CreateTableStmt),
-    CreateIndex(CreateIndexStmt),
-    CreateView(CreateViewStmt),
+    // Data definition
+    // ========================================================================
+    /// The `CREATE SCHEMA ...` statement
     CreateSchema(CreateSchemaStmt),
 
+    /// The `CREATE TABLE ...` statement
+    CreateTable(CreateTableStmt),
+    /// The `ALTER TABLE ...` statement
     AlterTable(AlterTableStmt),
 
+    /// The `CREATE VIEW ...` statement
+    CreateView(CreateViewStmt),
+
+    /// The `CREATE DOMAIN ...` statement
+    CreateDomain(CreateDomainStmt),
+    /// The `ALTER DOMAIN ...` statement
+    AlterDomain(AlterDomainStmt),
+
+    /// The `CREATE TYPE ...` statement
+    CreateType(CreateTypeStmt),
+    /// The `ALTER TYPE ...` statement
+    AlterType(AlterTypeStmt),
+
+    /// The `CREATE INDEX ...` statement (Not ANSI SQL standard)
+    ///
+    /// **NOTE**: not part of the ANSI SQL standard, and thus its syntax varies among vendors.
+    CreateIndex(CreateIndexStmt),
+
+    /// The `DROP { SCHEMA | TABLE | VIEW | DOMAIN | TYPE | INDEX } ...` statement
     Drop(DropStmt),
 
-    // /// EXPLAIN / DESCRIBE for select_statement
-    // Explain {
-    //     // If true, query used the MySQL `DESCRIBE` alias for explain
-    //     describe_alias: bool,
-    //     /// Carry out the command and show actual run times and other statistics.
-    //     analyze: bool,
-    //     // Display additional information regarding the plan.
-    //     verbose: bool,
-    //     /// A SQL query that specifies what to explain
-    //     statement: Box<Statement>,
-    // },
-
     // ========================================================================
+    // Data manipulation
+    // ========================================================================
+    /// The `INSERT INTO ...` statement
     Insert(InsertStmt),
-
+    /// The `DELETE FROM ...` statement
     Delete(DeleteStmt),
-
+    /// The `UPDATE ... SET ...` statement
     Update(UpdateStmt),
-
-    Query(Box<Query>),
+    /// The `SELECT ...` statement
+    Select(SelectStmt),
 
     // ========================================================================
-    /// `{ BEGIN [ TRANSACTION | WORK ] | START TRANSACTION } ...`
-    StartTransaction {
-        modes: Vec<TransactionMode>,
-    },
-    /// `SET TRANSACTION ...`
-    SetTransaction {
-        modes: Vec<TransactionMode>,
-    },
-    /// `COMMIT [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ]`
-    Commit {
-        chain: bool,
-    },
-    /// `ROLLBACK [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ]`
-    Rollback {
-        chain: bool,
-    },
+    // Transaction management
+    // ========================================================================
+    /// The `START TRANSACTION ...` statement
+    StartTransaction(StartTransactionStmt),
+    /// The `SET TRANSACTION ...` statement
+    SetTransaction(SetTransactionStmt),
+    /// The `COMMIT ...` statement
+    CommitTransaction(CommitTransactionStmt),
+    /// The `ROLLBACK ...` statement
+    RollbackTransaction(RollbackTransactionStmt),
 }
 
 impl fmt::Display for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
+        match self {
+            Self::CreateSchema(stmt) => write!(f, "{}", stmt),
+            Self::CreateTable(stmt) => write!(f, "{}", stmt),
+            Self::AlterTable(stmt) => write!(f, "{}", stmt),
+            Self::CreateView(stmt) => write!(f, "{}", stmt),
+            Self::CreateDomain(stmt) => write!(f, "{}", stmt),
+            Self::AlterDomain(stmt) => write!(f, "{}", stmt),
+            Self::CreateType(stmt) => write!(f, "{}", stmt),
+            Self::AlterType(stmt) => write!(f, "{}", stmt),
+            Self::CreateIndex(stmt) => write!(f, "{}", stmt),
+            Self::Drop(stmt) => write!(f, "{}", stmt),
 
-// ============================================================================
-// Data Definition
-// ============================================================================
+            Self::Insert(stmt) => write!(f, "{}", stmt),
+            Self::Delete(stmt) => write!(f, "{}", stmt),
+            Self::Update(stmt) => write!(f, "{}", stmt),
+            Self::Select(stmt) => write!(f, "{}", stmt),
 
-///
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct CreateDatabaseStmt {}
-
-impl fmt::Display for CreateDatabaseStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-///
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct CreateTableStmt {}
-
-impl fmt::Display for CreateTableStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-///
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct CreateIndexStmt {}
-
-impl fmt::Display for CreateIndexStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-///
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct CreateViewStmt {}
-
-impl fmt::Display for CreateViewStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-///
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct CreateSchemaStmt {}
-
-impl fmt::Display for CreateSchemaStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-///
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct AlterTableStmt {}
-
-impl fmt::Display for AlterTableStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-///
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct DropStmt {}
-
-impl fmt::Display for DropStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-// ============================================================================
-// Data Manipulation
-// ============================================================================
-
-///
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct InsertStmt {}
-
-impl fmt::Display for InsertStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-///
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct DeleteStmt {}
-
-impl fmt::Display for DeleteStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-///
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct UpdateStmt {}
-
-impl fmt::Display for UpdateStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+            Self::StartTransaction(stmt) => write!(f, "{}", stmt),
+            Self::SetTransaction(stmt) => write!(f, "{}", stmt),
+            Self::CommitTransaction(stmt) => write!(f, "{}", stmt),
+            Self::RollbackTransaction(stmt) => write!(f, "{}", stmt),
+        }
     }
 }
