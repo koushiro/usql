@@ -9,12 +9,14 @@ pub struct PostgresDialect;
 
 /// The lexer configuration of PostgreSQL dialect.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PostgresLexerConfig {}
 
 impl DialectLexerConf for PostgresLexerConfig {}
 
 /// The parser configuration of PostgreSQL dialect.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PostgresParserConfig {}
 
 impl DialectParserConf for PostgresParserConfig {}

@@ -22,7 +22,7 @@ pub mod mysql;
 /// PostgreSQL 13.
 #[cfg(feature = "postgres")]
 pub mod postgres;
-/// SQLite.
+/// SQLite 3.
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
 

@@ -30,6 +30,7 @@ macro_rules! define_keyword {
         #[doc(hidden)]
         #[allow(non_camel_case_types)]
         #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub enum $name {
             $($keyword),*
         }
