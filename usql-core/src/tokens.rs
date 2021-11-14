@@ -211,7 +211,6 @@ pub enum Comment {
         /// The comment text.
         comment: String,
     },
-    // TODO: Not support now
     /// Multiple line comment.
     MultiLine(String),
 }
