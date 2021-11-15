@@ -61,9 +61,11 @@ impl fmt::Display for CreateSchemaStmt {
 /// The `CREATE TABLE` statement.
 ///
 /// ```txt
-/// CREATE [ TEMPORARY ] TABLE [ IF NOT EXISTS ] <table name> (
+/// CREATE [ TEMPORARY ] TABLE [ IF NOT EXISTS ] <table name> ([
+///   { <columns> | <table constraint> | LIKE <source table> [ <like option> ... ] } [, ... ]
+/// ])
 ///
-/// )
+/// CREATE [ TEMPORARY ] TABLE [ IF NOT EXISTS ] <table name> [ (<columns>) ] AS <query>
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -80,7 +82,7 @@ pub struct CreateTableStmt {
     /// Table constraints.
     pub constraints: Vec<TableConstraintDef>,
     /// `LIKE` clause.
-    pub like: Option<LikeClause>,
+    pub like: Option<Like>,
     /// `AS <query>` clause.
     pub query: Option<Box<Query>>,
 }
@@ -394,14 +396,14 @@ fn display_constraint_name(name: &'_ Option<Ident>) -> impl fmt::Display + '_ {
 /// column names, their data types, and their not-null constraints.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct LikeClause {
+pub struct Like {
     /// Source table name.
     pub table: ObjectName,
     /// Like options.
     pub options: Vec<LikeOption>,
 }
 
-impl fmt::Display for LikeClause {
+impl fmt::Display for Like {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.table)?;
         for option in &self.options {
@@ -645,7 +647,7 @@ pub struct CreateDomainStmt {
     /// Domain constraints.
     pub constraints: Vec<DomainConstraintDef>,
     /// Default clause.
-    pub default: Option<Expr>,
+    pub default: Option<Literal>,
     /// Collation name.
     pub collation: Option<ObjectName>,
 }
@@ -739,7 +741,7 @@ impl fmt::Display for AlterDomainStmt {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AlterDomainAction {
-    SetDefault(Box<Expr>),
+    SetDefault(Literal),
     DropDefault,
     AddConstraint(DomainConstraintDef),
     DropConstraint(Ident),
@@ -811,7 +813,7 @@ pub struct TypeAttributeDef {
     /// Data type.
     pub data_type: DataType,
     /// Default clause.
-    pub default: Option<Expr>,
+    pub default: Option<Literal>,
     /// Collation name.
     pub collation: Option<ObjectName>,
 }

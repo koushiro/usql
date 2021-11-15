@@ -13,7 +13,7 @@ pub struct Query {
     pub with: Option<With>,
     /// SELECT or UNION / EXCEPT / INTERSECT
     pub body: QueryBody,
-    /// `ORDER BY <expr> [ ASC | DESC ] [ NULLS { FIRST | LAST } ] [, ...]`
+    /// `ORDER BY { <expr> [ ASC | DESC ] [ NULLS { FIRST | LAST } ] } [, ...]`
     pub order_by: Vec<OrderBy>,
     /// `LIMIT { <N> | ALL }`
     pub limit: Option<Limit>,
@@ -463,8 +463,8 @@ impl fmt::Display for OrderBy {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Limit {
-    pub offset: Option<Expr>,
-    pub count: Expr,
+    pub offset: Option<Literal>,
+    pub count: Literal,
 }
 
 impl fmt::Display for Limit {
@@ -486,7 +486,7 @@ impl fmt::Display for Limit {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Offset {
-    pub offset: Expr,
+    pub offset: Literal,
     pub rows: OffsetRows,
 }
 
@@ -526,7 +526,7 @@ impl fmt::Display for OffsetRows {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Fetch {
-    pub quantity: Option<Expr>,
+    pub quantity: Option<Literal>,
     /// Flag indicates that if the quantity is percentage.
     pub percent: bool,
     pub with_ties: bool,
