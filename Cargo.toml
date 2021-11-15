@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "usql",
+    "usql-ast",
     "usql-core",
     "usql-lexer",
     "usql-parser",

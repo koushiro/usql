@@ -9,12 +9,13 @@ license = "Apache-2.0"
 
 documentation = "https://docs.rs/usql-lexer"
 repository = "https://github.com/koushiro/usql"
-description = "Universal SQL Lexer"
+description = "Universal SQL lexer"
 
 [features]
 default = ["std"]
-std = []
+std = ["usql-core/std"]
 
 [dependencies]
+usql-core = { path = "../usql-core", default-features = false }
 
 [dev-dependencies]

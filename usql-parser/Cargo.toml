@@ -9,12 +9,17 @@ license = "Apache-2.0"
 
 documentation = "https://docs.rs/usql-parser"
 repository = "https://github.com/koushiro/usql"
-description = "Universal SQL Parser"
+description = "Universal SQL parser"
 
 [features]
 default = ["std"]
-std = []
+std = [
+  "usql-ast/std",
+  "usql-core/std",
+]
 
 [dependencies]
+usql-ast = { path = "../usql-ast", default-features = false }
+usql-core = { path = "../usql-core", default-features = false }
 
 [dev-dependencies]
