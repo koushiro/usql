@@ -14,12 +14,12 @@ description = "Universal SQL parser"
 [features]
 default = ["std"]
 std = [
-  "usql-core/std",
   "usql-ast/std",
+  "usql-core/std",
 ]
 
 [dependencies]
-usql-core = { path = "../usql-core", default-features = false }
 usql-ast = { path = "../usql-ast", default-features = false }
+usql-core = { path = "../usql-core", default-features = false }
 
 [dev-dependencies]
