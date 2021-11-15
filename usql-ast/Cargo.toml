@@ -1,0 +1,25 @@
+[package]
+name = "usql-ast"
+version = "0.0.0"
+authors = ["koushiro <koushiro.cqx@gmail.com>"]
+edition = "2021"
+rust-version = "1.56"
+readme = "README.md"
+license = "Apache-2.0"
+
+documentation = "https://docs.rs/usql-ast"
+repository = "https://github.com/koushiro/usql"
+description = "Universal SQL AST (abstract syntax tree) types"
+
+[features]
+default = ["std"]
+std = []
+
+mysql = []
+postgres = []
+sqlite = []
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features  = ["alloc", "derive"], optional = true }
+
+[dev-dependencies]
