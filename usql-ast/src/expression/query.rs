@@ -18,8 +18,8 @@ use crate::{
 pub struct Query {
     /// WITH (common table expressions, or CTEs)
     pub with: Option<With>,
-    /// SELECT or UNION / EXCEPT / INTERSECT
-    pub body: QueryBody,
+    // /// SELECT or UNION / EXCEPT / INTERSECT
+    // pub body: QueryBody,
     /// `ORDER BY <expr> [ ASC | DESC ] [ NULLS { FIRST | LAST } ] [, ...]`
     pub order_by: Vec<OrderBy>,
     /// `LIMIT { <N> | ALL }`
@@ -35,7 +35,7 @@ impl fmt::Display for Query {
         if let Some(with) = &self.with {
             write!(f, "{} ", with)?;
         }
-        write!(f, "{}", self.body)?;
+        // write!(f, "{}", self.body)?;
         if !self.order_by.is_empty() {
             write!(f, " ORDER BY {}", display_comma_separated(&self.order_by))?;
         }
@@ -172,7 +172,7 @@ pub enum TableFactor {
 }
 
 impl fmt::Display for TableFactor {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
         todo!()
     }
 }

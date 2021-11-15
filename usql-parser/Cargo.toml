@@ -13,9 +13,13 @@ description = "Universal SQL parser"
 
 [features]
 default = ["std"]
-std = ["usql-lexer/std"]
+std = [
+  "usql-core/std",
+  "usql-ast/std",
+]
 
 [dependencies]
-usql-lexer = { path = "../usql-lexer", default-features = false }
+usql-core = { path = "../usql-core", default-features = false }
+usql-ast = { path = "../usql-ast", default-features = false }
 
 [dev-dependencies]
