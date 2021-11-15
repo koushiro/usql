@@ -5,11 +5,7 @@ use core::fmt;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    expression::*,
-    types::*,
-    utils::display_comma_separated,
-};
+use crate::{expression::*, types::*, utils::display_comma_separated};
 
 /// The most complete variant of a `SELECT` query expression, optionally
 /// including `WITH`, `UNION` / other set operations, and `ORDER BY`.
