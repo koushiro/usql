@@ -2,15 +2,12 @@
 use alloc::{boxed::Box, vec::Vec};
 use core::fmt;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 use crate::{expression::*, types::*, utils::display_comma_separated};
 
 /// The most complete variant of a `SELECT` query expression, optionally
 /// including `WITH`, `UNION` / other set operations, and `ORDER BY`.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Query {
     /// WITH (common table expressions, or CTEs)
     pub with: Option<With>,
@@ -52,7 +49,7 @@ impl fmt::Display for Query {
 /// appear either as the only body item of an `Query`, or as an operand to a
 /// set operation like `UNION`.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Select {
     #[doc(hidden)]
     pub distinct: bool,
@@ -90,7 +87,7 @@ impl fmt::Display for Select {
 
 /// One item of the comma-separated list following `SELECT`
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SelectItem {
     /// An unqualified `*`
     Wildcard,
@@ -117,7 +114,7 @@ impl fmt::Display for SelectItem {
 ///
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TableWithJoins {
     pub relation: TableFactor,
     pub joins: Vec<Join>,
@@ -136,7 +133,7 @@ impl fmt::Display for TableWithJoins {
 /// A table name or a parenthesized subquery with an optional alias
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TableFactor {
     Table {
         name: ObjectName,
@@ -176,7 +173,7 @@ impl fmt::Display for TableFactor {
 ///
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TableAlias {
     pub name: Ident,
     pub columns: Vec<Ident>,
@@ -195,7 +192,7 @@ impl fmt::Display for TableAlias {
 ///
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Join {
     pub relation: TableFactor,
     pub join_operator: JoinOperator,
@@ -240,7 +237,7 @@ impl fmt::Display for Join {
 ///
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum JoinOperator {
     CrossJoin,
     Inner(JoinConstraint),
@@ -252,7 +249,7 @@ pub enum JoinOperator {
 ///
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum JoinConstraint {
     On(Expr),
     Using(Vec<Ident>),
@@ -292,7 +289,7 @@ impl JoinConstraint {
 /// With clause.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct With {
     pub recursive: bool,
     pub cte_tables: Vec<Cte>,
@@ -315,7 +312,7 @@ impl fmt::Display for With {
 /// number of columns in the query matches the number of columns in the query.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Cte {
     pub alias: TableAlias,
     pub query: Query,
@@ -338,7 +335,7 @@ impl fmt::Display for Cte {
 /// <expr> [ASC | DESC] [NULLS FIRST | NULLS LAST]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OrderBy {
     /// Order by expression
     pub expr: Box<Expr>,
@@ -372,7 +369,7 @@ impl fmt::Display for OrderBy {
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Limit {
     pub offset: Option<Expr>,
     pub count: Expr,
@@ -395,7 +392,7 @@ impl fmt::Display for Limit {
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Offset {
     pub offset: Expr,
     pub rows: OffsetRows,
@@ -410,7 +407,7 @@ impl fmt::Display for Offset {
 /// Stores the keyword after `OFFSET <number>`
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum OffsetRows {
     /// Omitting ROW/ROWS is non-standard MySQL quirk.
     None,
@@ -435,7 +432,7 @@ impl fmt::Display for OffsetRows {
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Fetch {
     pub quantity: Option<Expr>,
     /// Flag indicates that if the quantity is percentage.

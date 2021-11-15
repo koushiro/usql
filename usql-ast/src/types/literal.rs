@@ -2,14 +2,11 @@
 use alloc::string::String;
 use core::fmt;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 use crate::utils::escape_single_quote_string;
 
 /// SQL literal values such as null, boolean, number, string, datetime and interval.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Literal {
     /// `NULL` value
     Null,
@@ -67,7 +64,7 @@ impl fmt::Display for Literal {
 /// Date literal, format: `DATE '<years>-<months>-<days>', e.g. `DATE '2021-11-09'`.
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Date {
     pub years: u16, // u16::MAX = 65535, which is big enough for representing the year.
     pub months: u8,
@@ -85,7 +82,7 @@ impl fmt::Display for Date {
 /// e.g. `TIME '11:40:12.1234+08:00'`.
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Time {
     pub hours: u8,
     pub minutes: u8,
@@ -115,7 +112,7 @@ impl fmt::Display for Time {
 /// e.g. `TIME '11:40:12.1234+08:00'`.
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TimeZone {
     pub plus_sign: bool, // true: plus sign; false: minus sign.
     pub hours: u8,
@@ -136,7 +133,7 @@ impl fmt::Display for TimeZone {
 /// `TIMESTAMP '<years>-<months>-<days> <hours>:<minutes>:<seconds> [ .<seconds fraction> ] [ <time zone interval>  ]'`
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Timestamp {
     pub date: Date,
     pub time: Option<Time>,
@@ -169,7 +166,7 @@ impl fmt::Display for Timestamp {
 /// unit specifications, like `HOUR TO YEAR`.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Interval {
     /// The raw `<value>` that was present in `INTERVAL '<value>'`.
     pub value: String,
@@ -258,7 +255,7 @@ impl fmt::Display for Interval {
 /// The leading/tailing field of interval.
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DateTimeField {
     Year,
     Month,

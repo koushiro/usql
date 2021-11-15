@@ -4,15 +4,12 @@ mod transaction;
 
 use core::fmt;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 pub use self::{ddl::*, dml::*, transaction::*};
 
 /// A top-level statement (SELECT, INSERT, CREATE, etc.)
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Stmt {
     // ========================================================================
     // Data definition

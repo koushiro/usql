@@ -5,14 +5,11 @@ use alloc::{
 };
 use core::fmt;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 use crate::utils::display_separated;
 
 /// An identifier, decomposed into its value or character data and the quote style.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Ident {
     /// The value of the identifier without quotes.
     pub value: String,
@@ -72,7 +69,7 @@ impl fmt::Display for Ident {
 
 /// A name of a table, view, custom type, etc., possibly multi-part, i.e. db.schema.obj
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ObjectName(pub Vec<Ident>);
 
 impl fmt::Display for ObjectName {

@@ -6,9 +6,6 @@ mod query;
 use alloc::{boxed::Box, vec::Vec};
 use core::fmt;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 pub use self::{
     function::*,
     operator::{BinaryOperator, UnaryOperator},
@@ -21,7 +18,7 @@ use crate::{
 
 /// SQL expression type.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Expr {
     /// A literal value, such as string, number, date.
     Literal(Literal),
@@ -139,7 +136,7 @@ impl fmt::Display for Expr {
 /// `<expr> IS [NOT] NULL` operator.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct IsNullExpr {
     pub negated: bool,
     pub expr: Box<Expr>,
@@ -159,7 +156,7 @@ impl fmt::Display for IsNullExpr {
 /// `<expr1> IS [NOT] DISTINCT FROM <expr2>` operator
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct IsDistinctFromExpr {
     pub negated: bool,
     pub left: Box<Expr>,
@@ -181,7 +178,7 @@ impl fmt::Display for IsDistinctFromExpr {
 /// Unary operation e.g. `NOT foo`
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct UnaryOpExpr {
     op: UnaryOperator,
     expr: Box<Expr>,
@@ -196,7 +193,7 @@ impl fmt::Display for UnaryOpExpr {
 /// Binary operation e.g. `1 + 1` or `foo > bar`
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BinaryOpExpr {
     pub op: BinaryOperator,
     pub left: Box<Expr>,
@@ -212,7 +209,7 @@ impl fmt::Display for BinaryOpExpr {
 /// `<expr> [ NOT ] IN (expr1, expr2, ...)`
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct InListExpr {
     pub expr: Box<Expr>,
     pub negated: bool,
@@ -234,7 +231,7 @@ impl fmt::Display for InListExpr {
 /// `<expr> [ NOT ] IN (SELECT ...)`
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct InSubqueryExpr {
     pub expr: Box<Expr>,
     pub negated: bool,
@@ -256,7 +253,7 @@ impl fmt::Display for InSubqueryExpr {
 /// `<expr> [ NOT ] BETWEEN <low> AND <high>`
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BetweenExpr {
     pub expr: Box<Expr>,
     pub negated: bool,
@@ -284,7 +281,7 @@ impl fmt::Display for BetweenExpr {
 /// <https://jakewheat.github.io/sql-overview/sql-2016-foundation-grammar.html#simple-when-clause>
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CaseExpr {
     pub operand: Option<Box<Expr>>,
     pub conditions: Vec<Expr>,
@@ -311,7 +308,7 @@ impl fmt::Display for CaseExpr {
 /// `<expr> COLLATE collation`
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CollateExpr {
     pub expr: Box<Expr>,
     pub collation: ObjectName,
@@ -328,7 +325,7 @@ impl fmt::Display for CollateExpr {
 //  TRY_CAST differs from CAST in the choice of how to implement invalid conversions
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CastExpr {
     pub r#try: bool,
     pub expr: Box<Expr>,
@@ -348,7 +345,7 @@ impl fmt::Display for CastExpr {
 /// EXTRACT(DateTimeField FROM <expr>)
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ExtractExpr {
     pub field: DateTimeField,
     pub expr: Box<Expr>,
@@ -363,7 +360,7 @@ impl fmt::Display for ExtractExpr {
 /// SUBSTRING(<expr> [FROM <expr>] [FOR <expr>])
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SubstringExpr {
     pub expr: Box<Expr>,
     pub substring_from: Option<Box<Expr>>,
@@ -388,7 +385,7 @@ impl fmt::Display for SubstringExpr {
 /// TRIM(<expr>)
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TrimExpr {
     pub expr: Box<Expr>,
     // ([BOTH | LEADING | TRAILING], <expr>)
@@ -410,7 +407,7 @@ impl fmt::Display for TrimExpr {
 /// [BOTH | LEADING | TRAILING]
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TrimWhereField {
     Both,
     Leading,
@@ -431,7 +428,7 @@ impl fmt::Display for TrimWhereField {
 /// [ WITHIN GROUP (ORDER BY <within_group1>[, ...] ) ]
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ListAggExpr {
     pub distinct: bool,
     pub expr: Box<Expr>,
@@ -469,7 +466,7 @@ impl fmt::Display for ListAggExpr {
 /// The `ON OVERFLOW` clause of a LISTAGG invocation
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ListAggOnOverflow {
     /// `ON OVERFLOW ERROR`
     Error,

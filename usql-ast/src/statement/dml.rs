@@ -2,9 +2,6 @@
 use alloc::{boxed::Box, vec::Vec};
 use core::fmt;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 use crate::{expression::*, types::*, utils::display_comma_separated};
 
 /// The `INSERT INTO ...` statement.
@@ -13,7 +10,7 @@ use crate::{expression::*, types::*, utils::display_comma_separated};
 /// INSERT INTO <table name> [ (column1, column2, ...) ] [SELECT ...]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct InsertStmt {
     /// Table name.
     pub table: ObjectName,
@@ -42,7 +39,7 @@ impl fmt::Display for InsertStmt {
 /// DELETE FROM <table> [ WHERE <search condition> ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DeleteStmt {
     /// Table name.
     pub table: ObjectName,
@@ -66,7 +63,7 @@ impl fmt::Display for DeleteStmt {
 /// UPDATE <table> SET <assignments> [ WHERE <search condition> ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct UpdateStmt {
     /// Table name.
     pub table: ObjectName,
@@ -91,7 +88,7 @@ impl fmt::Display for UpdateStmt {
 
 /// SQL assignment `foo = expr` as used in `Update` statement.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Assignment {
     /// Set target.
     pub target: Ident,
@@ -107,7 +104,7 @@ impl fmt::Display for Assignment {
 
 /// The `SELECT ...` statement.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SelectStmt(pub Box<Query>);
 
 impl fmt::Display for SelectStmt {

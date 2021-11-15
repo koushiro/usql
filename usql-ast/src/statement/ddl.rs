@@ -2,9 +2,6 @@
 use alloc::{boxed::Box, vec::Vec};
 use core::fmt;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 use crate::{
     expression::*,
     statement::Stmt,
@@ -24,7 +21,7 @@ use crate::{
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CreateSchemaStmt {
     /// Flag indicates that check if the schema does not exists.
     ///
@@ -70,7 +67,7 @@ impl fmt::Display for CreateSchemaStmt {
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CreateTableStmt {
     /// Flag indicates that if the table is temporary.
     pub temporary: bool,
@@ -110,7 +107,7 @@ impl fmt::Display for CreateTableStmt {
 
 /// SQL table constraint definition.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TableConstraintDef {
     /// Table constraint name.
     pub name: Option<Ident>,
@@ -131,7 +128,7 @@ impl fmt::Display for TableConstraintDef {
 
 /// SQL table constraint kind.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TableConstraint {
     /// `UNIQUE | PRIMARY KEY (<columns>)`
     #[doc(hidden)]
@@ -211,7 +208,7 @@ impl fmt::Display for TableConstraint {
 
 /// SQL column definition.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ColumnDef {
     /// Column name.
     pub name: Ident,
@@ -243,7 +240,7 @@ impl fmt::Display for ColumnDef {
 
 /// SQL column constraint definition.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ColumnConstraintDef {
     /// Column constraint name.
     pub name: Option<Ident>,
@@ -264,7 +261,7 @@ impl fmt::Display for ColumnConstraintDef {
 
 /// SQL column constraint kind.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ColumnConstraint {
     /// `NULL`
     Null,
@@ -338,7 +335,7 @@ impl fmt::Display for ColumnConstraint {
 /// Used in references constraints.
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ReferentialMatchType {
     Full,
     Partial,
@@ -358,7 +355,7 @@ impl fmt::Display for ReferentialMatchType {
 /// Used in references constraints in `ON UPDATE` and `ON DELETE` rules.
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ReferentialAction {
     Cascade,
     Restrict,
@@ -396,7 +393,7 @@ fn display_constraint_name(name: &'_ Option<Ident>) -> impl fmt::Display + '_ {
 /// It specifies a table from which the new table automatically copies all
 /// column names, their data types, and their not-null constraints.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LikeClause {
     /// Source table name.
     pub table: ObjectName,
@@ -417,7 +414,7 @@ impl fmt::Display for LikeClause {
 /// Like option of `LIKE` clause.
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum LikeOption {
     IncludingIdentity,
     ExcludingIdentity,
@@ -446,7 +443,7 @@ impl fmt::Display for LikeOption {
 /// ALTER TABLE <table name> <action>
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AlterTableStmt {
     /// Flag indicates that check if the table exists. (Non-standard)
     pub if_exists: bool,
@@ -471,7 +468,7 @@ impl fmt::Display for AlterTableStmt {
 /// The alter action of `ALTER TABLE` statement.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AlterTableAction {
     AddColumn {
         /// Flag indicates that check if the column does not exist. (Non-standard)
@@ -563,7 +560,7 @@ impl fmt::Display for AlterTableAction {
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CreateViewStmt {
     /// Flag indicates that if a view of the same name already exists, the old one will be replaced.
     ///
@@ -611,7 +608,7 @@ impl fmt::Display for CreateViewStmt {
 /// This option controls the behavior of automatically updatable views.
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ViewCheckOption {
     Cascaded,
     Local,
@@ -639,7 +636,7 @@ impl fmt::Display for ViewCheckOption {
 ///     [ COLLATE <collation name> ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CreateDomainStmt {
     /// Domain name.
     pub name: ObjectName,
@@ -676,7 +673,7 @@ impl fmt::Display for CreateDomainStmt {
 
 /// SQL domain constraint definition.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DomainConstraintDef {
     /// Domain constraint name.
     pub name: Option<Ident>,
@@ -697,7 +694,7 @@ impl fmt::Display for DomainConstraintDef {
 
 /// SQL domain constraint kind.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DomainConstraint {
     /// `NULL`
     Null,
@@ -723,7 +720,7 @@ impl fmt::Display for DomainConstraint {
 /// ALTER DOMAIN <domain name> <action>
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AlterDomainStmt {
     /// Domain name.
     pub name: ObjectName,
@@ -740,7 +737,7 @@ impl fmt::Display for AlterDomainStmt {
 /// The alter action of `ALTER DOMAIN` statement.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AlterDomainAction {
     SetDefault(Box<Expr>),
     DropDefault,
@@ -768,7 +765,7 @@ impl fmt::Display for AlterDomainAction {
 /// ```txt
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CreateTypeStmt {
     /// Type name.
     pub name: ObjectName,
@@ -789,7 +786,7 @@ impl fmt::Display for CreateTypeStmt {
 /// The user-defined type definition.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TypeDef {
     DataType(DataType),
     MemberList(Vec<TypeAttributeDef>),
@@ -807,7 +804,7 @@ impl fmt::Display for TypeDef {
 /// The attribute definition of user-defined type.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TypeAttributeDef {
     /// Attribute name.
     pub name: Ident,
@@ -838,7 +835,7 @@ impl fmt::Display for TypeAttributeDef {
 /// ALTER TYPE <type name> <action>
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AlterTypeStmt {
     /// Type name.
     pub name: ObjectName,
@@ -855,7 +852,7 @@ impl fmt::Display for AlterTypeStmt {
 /// The alter action of `ALTER TYPE` statement.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AlterTypeAction {
     AddAttribute(TypeAttributeDef),
     DropAttribute(Ident),
@@ -881,7 +878,7 @@ impl fmt::Display for AlterTypeAction {
 ///     [ { column [ ASC | DESC ] } ... ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CreateIndexStmt {
     /// Flag indicates that check if the index is unique.
     pub unique: bool,
@@ -921,7 +918,7 @@ impl fmt::Display for CreateIndexStmt {
 ///     [ CASCADE | RESTRICT ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DropStmt {
     /// Flag indicates that check if the `schema/table/view/domain/type/index` exists. (Non-standard)
     pub if_exists: bool,
@@ -952,7 +949,7 @@ impl fmt::Display for DropStmt {
 /// The object type of drop statement.
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ObjectType {
     Schema,
     Table,
@@ -978,7 +975,7 @@ impl fmt::Display for ObjectType {
 /// The behavior of drop statement.
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DropBehavior {
     Cascade,
     Restrict,

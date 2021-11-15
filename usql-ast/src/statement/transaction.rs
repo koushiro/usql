@@ -2,9 +2,6 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 use crate::utils::display_comma_separated;
 
 /// The `START TRANSACTION ...` statement.
@@ -13,7 +10,7 @@ use crate::utils::display_comma_separated;
 /// { START TRANSACTION | BEGIN [ TRANSACTION | WORK ] } [ <mode>, ... ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StartTransactionStmt {
     /// The transaction modes.
     pub modes: Vec<TransactionMode>,
@@ -35,7 +32,7 @@ impl fmt::Display for StartTransactionStmt {
 /// SET TRANSACTION [ <mode>, ... ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SetTransactionStmt {
     /// The transaction modes.
     pub modes: Vec<TransactionMode>,
@@ -54,7 +51,7 @@ impl fmt::Display for SetTransactionStmt {
 /// The mode of transaction.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TransactionMode {
     AccessMode(TransactionAccessMode),
     IsolationLevel(TransactionIsolationLevel),
@@ -72,7 +69,7 @@ impl fmt::Display for TransactionMode {
 /// The access mode of transaction.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TransactionAccessMode {
     ReadOnly,
     ReadWrite,
@@ -90,7 +87,7 @@ impl fmt::Display for TransactionAccessMode {
 /// The isolation level of transaction.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TransactionIsolationLevel {
     ReadUncommitted,
     ReadCommitted,
@@ -115,7 +112,7 @@ impl fmt::Display for TransactionIsolationLevel {
 /// COMMIT [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CommitTransactionStmt {
     /// Flag to indicate whether a new transaction is immediately started with
     /// the same transaction characteristics as the just finished one.
@@ -138,7 +135,7 @@ impl fmt::Display for CommitTransactionStmt {
 /// ROLLBACK [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RollbackTransactionStmt {
     /// Flag to indicate whether a new transaction is immediately started with
     /// the same transaction characteristics as the just finished one.

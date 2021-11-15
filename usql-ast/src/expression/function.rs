@@ -2,9 +2,6 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 use crate::{
     expression::{Expr, OrderBy},
     types::{Ident, ObjectName},
@@ -14,7 +11,7 @@ use crate::{
 /// A function call
 #[doc(hidden)]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Function {
     // aggregate functions may specify e.g. `COUNT(DISTINCT x)`
     pub distinct: bool,
@@ -42,7 +39,7 @@ impl fmt::Display for Function {
 ///
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum FunctionArg {
     Named { name: Ident, arg: Expr },
     Unnamed(Expr),
@@ -60,7 +57,7 @@ impl fmt::Display for FunctionArg {
 /// A window specification (i.e. `OVER (PARTITION BY .. ORDER BY .. etc.)`)
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct WindowSpec {
     pub partition_by: Vec<Expr>,
     pub order_by: Vec<OrderBy>,
@@ -107,7 +104,7 @@ impl fmt::Display for WindowSpec {
 /// reject invalid bounds like `ROWS UNBOUNDED FOLLOWING` before execution.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct WindowFrame {
     pub units: WindowFrameUnits,
     pub start_bound: WindowFrameBound,
@@ -134,7 +131,7 @@ impl Default for WindowFrame {
 ///
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum WindowFrameUnits {
     Rows,
     Range,
@@ -153,7 +150,7 @@ impl fmt::Display for WindowFrameUnits {
 
 /// Specifies [WindowFrame]'s `start_bound` and `end_bound`
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum WindowFrameBound {
     /// `CURRENT ROW`
     CurrentRow,
