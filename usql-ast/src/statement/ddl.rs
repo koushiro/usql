@@ -32,7 +32,7 @@ pub struct CreateSchemaStmt {
     /// Authorization clause.
     pub authorization: Option<Ident>,
     /// Schema element defines an object to be created within the schema.
-    pub elements: Vec<Box<Stmt>>,
+    pub elements: Vec<Stmt>,
 }
 
 impl fmt::Display for CreateSchemaStmt {
