@@ -22,7 +22,7 @@ pub struct Ident {
 }
 
 impl Ident {
-    /// Create a new identifier with the given value and no quotes.
+    /// Creates a new identifier with the given value and no quotes.
     pub fn new<S>(value: S) -> Self
     where
         S: Into<String>,
@@ -33,8 +33,8 @@ impl Ident {
         }
     }
 
-    /// Create a new quoted identifier with the given quote and value. This function
-    /// panics if the given quote is not a valid quote character.
+    /// Creates a new quoted identifier with the given quote and value.
+    /// This function panics if the given quote is not a valid quote character.
     pub fn with_quote<S>(quote: char, value: S) -> Self
     where
         S: Into<String>,
@@ -67,7 +67,7 @@ impl fmt::Display for Ident {
     }
 }
 
-/// A name of a table, view, custom type, etc., possibly multi-part, i.e. db.schema.obj
+/// A name of a table, view, custom type, etc. (possibly multi-part, i.e. db.schema.obj)
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ObjectName(pub Vec<Ident>);

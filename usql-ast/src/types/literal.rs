@@ -56,7 +56,7 @@ impl fmt::Display for Literal {
             Self::Date(v) => write!(f, "DATE '{}'", v),
             Self::Time(v) => write!(f, "TIME '{}'", v),
             Self::Timestamp(v) => write!(f, "TIMESTAMP '{}'", v),
-            Self::Interval(interval) => interval.fmt(f),
+            Self::Interval(v) => v.fmt(f),
         }
     }
 }

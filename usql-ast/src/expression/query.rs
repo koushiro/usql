@@ -11,8 +11,8 @@ use crate::{expression::*, types::*, utils::display_comma_separated};
 pub struct Query {
     /// WITH (common table expressions, or CTEs)
     pub with: Option<With>,
-    // /// SELECT or UNION / EXCEPT / INTERSECT
-    // pub body: QueryBody,
+    /// SELECT or UNION / EXCEPT / INTERSECT
+    pub body: QueryBody,
     /// `ORDER BY <expr> [ ASC | DESC ] [ NULLS { FIRST | LAST } ] [, ...]`
     pub order_by: Vec<OrderBy>,
     /// `LIMIT { <N> | ALL }`
@@ -28,7 +28,7 @@ impl fmt::Display for Query {
         if let Some(with) = &self.with {
             write!(f, "{} ", with)?;
         }
-        // write!(f, "{}", self.body)?;
+        write!(f, "{}", self.body)?;
         if !self.order_by.is_empty() {
             write!(f, " ORDER BY {}", display_comma_separated(&self.order_by))?;
         }
@@ -45,29 +45,101 @@ impl fmt::Display for Query {
     }
 }
 
+/// The body of query expression.
+#[doc(hidden)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum QueryBody {
+    Select(Box<Select>),
+    Operation {
+        left: Box<QueryBody>,
+        op: QueryBodyOperator,
+        right: Box<QueryBody>,
+    },
+}
+
+impl fmt::Display for QueryBody {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            QueryBody::Select(select) => write!(f, "{}", select),
+            QueryBody::Operation { left, op, right } => write!(f, "{} {} {}", left, op, right),
+        }
+    }
+}
+
+/// The operators that can be used in the query expression body.
+#[doc(hidden)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum QueryBodyOperator {
+    Union(Option<SetQuantifier>),
+    Except(Option<SetQuantifier>),
+    Intersect(Option<SetQuantifier>),
+}
+
+impl fmt::Display for QueryBodyOperator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match self {
+            QueryBodyOperator::Union(None) => "UNION",
+            QueryBodyOperator::Union(Some(SetQuantifier::All)) => "UNION ALL",
+            QueryBodyOperator::Union(Some(SetQuantifier::Distinct)) => "UNION DISTINCT",
+            QueryBodyOperator::Except(None) => "EXCEPT",
+            QueryBodyOperator::Except(Some(SetQuantifier::All)) => "EXCEPT ALL",
+            QueryBodyOperator::Except(Some(SetQuantifier::Distinct)) => "EXCEPT DISTINCT",
+            QueryBodyOperator::Intersect(None) => "INTERSECT",
+            QueryBodyOperator::Intersect(Some(SetQuantifier::All)) => "INTERSECT ALL",
+            QueryBodyOperator::Intersect(Some(SetQuantifier::Distinct)) => "INTERSECT DISTINCT",
+        })
+    }
+}
+
+/// The option of query body operator.
+#[doc(hidden)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum SetQuantifier {
+    All,
+    Distinct,
+}
+
+impl fmt::Display for SetQuantifier {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match self {
+            Self::All => "ALL",
+            Self::Distinct => "DISTINCT",
+        })
+    }
+}
+
 /// A restricted variant of `SELECT` (without CTEs/`ORDER BY`), which may
 /// appear either as the only body item of an `Query`, or as an operand to a
 /// set operation like `UNION`.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Select {
-    #[doc(hidden)]
-    pub distinct: bool,
+    /// Set quantifier
+    pub quantifier: Option<SetQuantifier>,
     /// projection expressions
     pub projection: Vec<SelectItem>,
-    /// FROM
+
+    /// FROM clause
     pub from: Vec<TableWithJoins>,
-    /// WHERE
-    pub selection: Option<Expr>,
-    /// GROUP BY
+    /// WHERE clause
+    pub selection: Option<Box<Expr>>,
+    /// GROUP BY clause
     pub group_by: Vec<Expr>,
-    /// HAVING
-    pub having: Option<Expr>,
+    /// HAVING clause
+    pub having: Option<Box<Expr>>,
+    /// WINDOW clause
+    pub windows: Option<Vec<Window>>,
 }
 
 impl fmt::Display for Select {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "SELECT{}", if self.distinct { " DISTINCT" } else { "" })?;
+        f.write_str("SELECT")?;
+        if let Some(quantifier) = &self.quantifier {
+            write!(f, " {}", quantifier)?;
+        }
         write!(f, " {}", display_comma_separated(&self.projection))?;
         if !self.from.is_empty() {
             write!(f, " FROM {}", display_comma_separated(&self.from))?;
@@ -81,6 +153,9 @@ impl fmt::Display for Select {
         if let Some(having) = &self.having {
             write!(f, " HAVING {}", having)?;
         }
+        if let Some(windows) = &self.windows {
+            write!(f, " WINDOW {}", display_comma_separated(windows))?;
+        }
         Ok(())
     }
 }
@@ -93,11 +168,12 @@ pub enum SelectItem {
     Wildcard,
     /// `alias.*` or even `schema.table.*`
     QualifiedWildcard(ObjectName),
-    /// Any expression, not followed by `[ AS ] alias`
-    UnnamedExpr(Expr),
-    /// An expression, followed by `[ AS ] alias`
+    /// An expression, maybe followed by `[ AS ] alias`
     #[doc(hidden)]
-    ExprWithAlias { expr: Expr, alias: Ident },
+    DerivedColumn {
+        expr: Box<Expr>,
+        alias: Option<Ident>,
+    },
 }
 
 impl fmt::Display for SelectItem {
@@ -105,13 +181,18 @@ impl fmt::Display for SelectItem {
         match self {
             SelectItem::Wildcard => write!(f, "*"),
             SelectItem::QualifiedWildcard(prefix) => write!(f, "{}.*", prefix),
-            SelectItem::UnnamedExpr(expr) => write!(f, "{}", expr),
-            SelectItem::ExprWithAlias { expr, alias } => write!(f, "{} AS {}", expr, alias),
+            SelectItem::DerivedColumn { expr, alias } => {
+                if let Some(alias) = alias {
+                    write!(f, "{} AS {}", expr, alias)
+                } else {
+                    write!(f, "{}", expr)
+                }
+            }
         }
     }
 }
 
-///
+/// From clause.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -124,7 +205,7 @@ impl fmt::Display for TableWithJoins {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.relation)?;
         for join in &self.joins {
-            write!(f, "{}", join)?;
+            write!(f, " {}", join)?;
         }
         Ok(())
     }
@@ -136,46 +217,57 @@ impl fmt::Display for TableWithJoins {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TableFactor {
     Table {
+        /// Table or query name.
         name: ObjectName,
         alias: Option<TableAlias>,
-        /// Arguments of a table-valued function, as supported by Postgres
-        /// and MSSQL. Note that deprecated MSSQL `FROM foo (NOLOCK)` syntax
-        /// will also be parsed as `args`.
-        args: Vec<FunctionArg>,
-        /// MSSQL-specific `WITH (...)` hints such as NOLOCK.
-        with_hints: Vec<Expr>,
     },
     Derived {
         lateral: bool,
         subquery: Box<Query>,
         alias: Option<TableAlias>,
     },
-    /// `TABLE(<expr>)[ AS <alias> ]`
-    TableFunction {
-        expr: Expr,
-        alias: Option<TableAlias>,
-    },
-    /// Represents a parenthesized table factor. The SQL spec only allows a
-    /// join expression (`(foo <JOIN> bar [ <JOIN> baz ... ])`) to be nested,
-    /// possibly several times.
-    ///
-    /// The parser may also accept non-standard nesting of bare tables for some
-    /// dialects, but the information about such nesting is stripped from AST.
+    /// Represents a parenthesized joined table.
+    /// The SQL spec only allows a join expression
+    /// (`(foo <JOIN> bar [ <JOIN> baz ... ])`) to be nested, possibly several times.
     NestedJoin(Box<TableWithJoins>),
 }
 
 impl fmt::Display for TableFactor {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Table { name, alias } => {
+                write!(f, "{}", name)?;
+                if let Some(alias) = alias {
+                    write!(f, " AS {}", alias)?;
+                }
+                Ok(())
+            }
+            Self::Derived {
+                lateral,
+                subquery,
+                alias,
+            } => {
+                if *lateral {
+                    write!(f, "LATERAL ")?;
+                }
+                write!(f, "({})", subquery)?;
+                if let Some(alias) = alias {
+                    write!(f, " AS {}", alias)?;
+                }
+                Ok(())
+            }
+            Self::NestedJoin(table) => write!(f, "({})", table),
+        }
     }
 }
 
-///
-#[doc(hidden)]
+/// Table alias.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TableAlias {
+    /// Alias name.
     pub name: Ident,
+    /// Columns.
     pub columns: Vec<Ident>,
 }
 
@@ -189,52 +281,52 @@ impl fmt::Display for TableAlias {
     }
 }
 
-///
+/// The `JOIN` relation.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Join {
+    pub join: JoinOperator,
     pub relation: TableFactor,
-    pub join_operator: JoinOperator,
 }
 
 impl fmt::Display for Join {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self.join_operator {
+        match &self.join {
+            JoinOperator::CrossJoin => write!(f, "CROSS JOIN {}", self.relation),
             JoinOperator::Inner(constraint) => write!(
                 f,
-                " {}JOIN {}{}",
+                "{}JOIN {}{}",
                 constraint.prefix(),
                 self.relation,
                 constraint.suffix(),
             ),
             JoinOperator::LeftOuter(constraint) => write!(
                 f,
-                " {}LEFT JOIN {}{}",
+                "{}LEFT JOIN {}{}",
                 constraint.prefix(),
                 self.relation,
                 constraint.suffix(),
             ),
             JoinOperator::RightOuter(constraint) => write!(
                 f,
-                " {}RIGHT JOIN {}{}",
+                "{}RIGHT JOIN {}{}",
                 constraint.prefix(),
                 self.relation,
                 constraint.suffix(),
             ),
             JoinOperator::FullOuter(constraint) => write!(
                 f,
-                " {}FULL JOIN {}{}",
+                "{}FULL JOIN {}{}",
                 constraint.prefix(),
                 self.relation,
                 constraint.suffix(),
             ),
-            JoinOperator::CrossJoin => write!(f, " CROSS JOIN {}", self.relation),
         }
     }
 }
 
-///
+/// The join operator.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -246,7 +338,7 @@ pub enum JoinOperator {
     FullOuter(JoinConstraint),
 }
 
-///
+/// The constraint of join operator.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -287,12 +379,13 @@ impl JoinConstraint {
 // ================================================================================================
 
 /// With clause.
-#[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct With {
+    #[doc(hidden)]
     pub recursive: bool,
-    pub cte_tables: Vec<Cte>,
+    /// Common table expressions.
+    pub ctes: Vec<Cte>,
 }
 
 impl fmt::Display for With {
@@ -301,15 +394,14 @@ impl fmt::Display for With {
             f,
             "WITH {}{}",
             if self.recursive { "RECURSIVE " } else { "" },
-            display_comma_separated(&self.cte_tables)
+            display_comma_separated(&self.ctes)
         )
     }
 }
 
-/// A single CTE (used after `WITH`): `alias [(col1, col2, ...)] AS ( query )`
+/// A single CTE (used after `WITH`): `alias [(col1, col2, ...)] AS ( query )`.
 /// The names in the column list before `AS`, when specified, replace the names
-/// of the columns returned by the query. The parser does not validate that the
-/// number of columns in the query matches the number of columns in the query.
+/// of the columns returned by the query.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -329,7 +421,7 @@ impl fmt::Display for Cte {
     }
 }
 
-/// `ORDER BY` clause
+/// `ORDER BY` clause.
 ///
 /// ```txt
 /// <expr> [ASC | DESC] [NULLS FIRST | NULLS LAST]
@@ -404,7 +496,7 @@ impl fmt::Display for Offset {
     }
 }
 
-/// Stores the keyword after `OFFSET <number>`
+/// Stores the keyword after `OFFSET <number>`.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -449,5 +541,22 @@ impl fmt::Display for Fetch {
         } else {
             write!(f, "FETCH FIRST ROWS {}", extension)
         }
+    }
+}
+
+/// Window clause.
+#[doc(hidden)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Window {
+    /// New window name.
+    pub name: Ident,
+    /// Window specification.
+    pub spec: WindowSpec,
+}
+
+impl fmt::Display for Window {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} AS ({})", self.name, self.spec)
     }
 }

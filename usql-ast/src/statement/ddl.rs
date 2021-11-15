@@ -217,7 +217,7 @@ pub struct ColumnDef {
     /// Column constraints.
     pub constraints: Vec<ColumnConstraintDef>,
     /// Default clause.
-    pub default: Option<Expr>,
+    pub default: Option<Literal>,
     /// Collation name.
     pub collation: Option<ObjectName>,
 }

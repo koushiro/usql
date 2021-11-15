@@ -10,9 +10,13 @@
 extern crate alloc;
 
 mod dialect;
-mod expression;
-mod statement;
-mod types;
 mod utils;
 
-pub use self::{dialect::*, expression::*, statement::*, types::*};
+pub use self::dialect::*;
+
+/// SQL expressions.
+pub mod expression;
+/// SQL statements.
+pub mod statement;
+/// SQL types (Literal, DataType, Ident, etc).
+pub mod types;
