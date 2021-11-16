@@ -633,7 +633,7 @@ impl fmt::Display for ViewCheckOption {
 ///
 /// ```txt
 /// CREATE DOMAIN <domain name> [ AS ] <type>
-///     [ { [ CONSTRAINT <name> ] NOT NULL | NULL | CHECK (expr) } ... ]
+///     [ { [ CONSTRAINT <constraint name> ] NOT NULL | NULL | CHECK (expr) } ... ]
 ///     [ DEFAULT <default option> ]
 ///     [ COLLATE <collation name> ]
 /// ```
@@ -870,6 +870,60 @@ impl fmt::Display for AlterTypeAction {
 }
 
 // ============================================================================
+// Database definition and manipulation
+// ============================================================================
+
+/// The `CREATE DATABASE` statement (Non-standard).
+///
+/// ```txt
+/// CREATE DATABASE [ IF NOT EXISTS ] <database name> [ <options> ]
+/// ```
+#[doc(hidden)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct CreateDatabaseStmt {
+    /// Flag indicates that check if the schema does not exists.
+    ///
+    /// **NOTE: MySQL/PostgreSQL specific**
+    pub if_not_exists: bool,
+    /// Database name.
+    pub name: ObjectName,
+    /// Create options.
+    pub options: Vec<SqlOption>,
+}
+
+impl fmt::Display for CreateDatabaseStmt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "CREATE DATABASE {if_not_exists}{db_name}",
+            if_not_exists = if self.if_not_exists { "IF NOT EXISTS " } else { "" },
+            db_name = self.name,
+        )?;
+        if !self.options.is_empty() {
+            write!(f, " {}", display_separated(&self.options, " "))?;
+        }
+        Ok(())
+    }
+}
+
+/// A simple SQL option (name [ = ] value).
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct SqlOption {
+    /// Option name.
+    pub name: Ident,
+    /// Option value.
+    pub value: Literal,
+}
+
+impl fmt::Display for SqlOption {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} = {}", self.name, self.value)
+    }
+}
+
+// ============================================================================
 // Index definition and manipulation
 // ============================================================================
 
@@ -912,17 +966,20 @@ impl fmt::Display for CreateIndexStmt {
 //  Drop manipulation of Schema/Table/View/Domain/Type/Index
 // ============================================================================
 
-/// The `DROP { SCHEMA | TABLE | VIEW | DOMAIN | TYPE | INDEX } <name> ...` statement
+/// The `DROP { SCHEMA | TABLE | VIEW | DOMAIN | TYPE | DATABASE | INDEX } <name> ...` statement
 ///
 /// ```txt
 /// DROP { SCHEMA | TABLE | VIEW | DOMAIN | TYPE | INDEX }
-///     [ IF EXISTS ] <index name>
+///     [ IF EXISTS ] <name>
 ///     [ CASCADE | RESTRICT ]
+///
+/// DROP INDEX [ IF EXISTS ] <index name> [ CASCADE | RESTRICT ]
+/// DROP DATABASE [ IF EXISTS ] <database name>
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DropStmt {
-    /// Flag indicates that check if the `schema/table/view/domain/type/index` exists. (Non-standard)
+    /// Flag indicates that check if the `schema/table/view/domain/type/database/index` exists. (Non-standard)
     pub if_exists: bool,
     /// Object type.
     pub ty: ObjectType,
@@ -958,6 +1015,7 @@ pub enum ObjectType {
     View,
     DOMAIN,
     Type,
+    Database,
     Index,
 }
 
@@ -969,6 +1027,7 @@ impl fmt::Display for ObjectType {
             Self::View => "VIEW",
             Self::DOMAIN => "DOMAIN",
             Self::Type => "TYPE",
+            Self::Database => "DATABASE",
             Self::Index => "INDEX",
         })
     }
