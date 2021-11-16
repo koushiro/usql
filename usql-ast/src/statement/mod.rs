@@ -35,12 +35,16 @@ pub enum Stmt {
     /// The `ALTER TYPE ...` statement
     AlterType(AlterTypeStmt),
 
+    /// The `CREATE DATABASE ...` statement (Not ANSI SQL standard)
+    ///
+    /// **NOTE**: not part of the ANSI SQL standard, and thus its syntax varies among vendors.
+    CreateDatabase(CreateDatabaseStmt),
     /// The `CREATE INDEX ...` statement (Not ANSI SQL standard)
     ///
     /// **NOTE**: not part of the ANSI SQL standard, and thus its syntax varies among vendors.
     CreateIndex(CreateIndexStmt),
 
-    /// The `DROP { SCHEMA | TABLE | VIEW | DOMAIN | TYPE | INDEX } ...` statement
+    /// The `DROP { SCHEMA | TABLE | VIEW | DOMAIN | TYPE | DATABASE | INDEX } ...` statement
     Drop(DropStmt),
 
     // ========================================================================
@@ -79,6 +83,7 @@ impl fmt::Display for Stmt {
             Self::AlterDomain(stmt) => write!(f, "{}", stmt),
             Self::CreateType(stmt) => write!(f, "{}", stmt),
             Self::AlterType(stmt) => write!(f, "{}", stmt),
+            Self::CreateDatabase(stmt) => write!(f, "{}", stmt),
             Self::CreateIndex(stmt) => write!(f, "{}", stmt),
             Self::Drop(stmt) => write!(f, "{}", stmt),
 
