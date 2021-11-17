@@ -68,7 +68,7 @@ pub trait DialectLexerConf: Clone + Debug {
 
     /// Determine if the comment token will be ignored.
     fn ignore_comment(&self) -> bool {
-       false
+        false
     }
 }
 
