@@ -19,6 +19,13 @@
 
 uSQL is a universal SQL Lexer and Parser, written in Rust.
 
+## Acknowledgement
+
+- [sqlparser](https://github.com/sqlparser-rs/sqlparser-rs):
+  uSQL is largely based on this library, but made some changes that apply to me.
+
+- [Online SQL:2016 grammar](https://jakewheat.github.io/sql-overview/sql-2016-foundation-grammar.html)
+
 ## License
 
 - [Apache License, Version 2.0](LICENSE)

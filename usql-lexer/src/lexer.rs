@@ -1,8 +1,13 @@
 #[cfg(not(feature = "std"))]
-use alloc::{string::String, vec, vec::Vec};
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 use core::{iter::Peekable, str::Chars};
 
-use usql_core::Dialect;
+use usql_core::{Dialect, DialectLexerConf};
 
 use crate::{
     error::{LexerError, Location},
@@ -26,7 +31,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         }
     }
 
-    ///
+    /// Returns the current location scanned by lexer.
     pub fn location(&self) -> Location {
         self.location
     }
@@ -86,41 +91,75 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                 // whitespace
                 ' ' | '\n' | '\t' | '\r' => Ok(self.tokenize_whitespace().map(Token::Whitespace)),
                 // national string literal
-                'N' => {
-                    self.iter.next();
-                    match self.iter.peek() {
-                        // N'...' - a <national character string literal>
-                        Some('\'') => Ok(Some(Token::NationalString(
-                            self.tokenize_single_quoted_string()?,
-                        ))),
-                        // regular identifier starting with an "N"
-                        _ => todo!(),
-                    }
-                }
-                // bit string literal
-                'B' => {
-                    self.iter.next();
-                    match self.iter.peek() {
-                        // B'...' - a <binary character string literal>
-                        Some('\'') => Ok(Some(Token::BitString(
-                            self.tokenize_single_quoted_string()?,
-                        ))),
-                        // regular identifier starting with an "B"
-                        _ => todo!(),
+                // The spec only allows an uppercase 'N' to introduce a national string literal,
+                // but PostgreSQL/MySQL, at least, allow a lowercase 'n' too.
+                n @ 'N' | n @ 'n' => {
+                    if self.next_if_is('\'') {
+                        // N'...' - <national character string literal>
+                        // open quote has been consumed
+                        let s = self.tokenize_string_literal('\'')?;
+                        Ok(Some(Token::NationalString(s)))
+                    } else {
+                        // regular identifier starting with an "N" or "n"
+                        let ident = self.tokenize_ident(n);
+                        Ok(Some(Token::ident(ident, None)))
                     }
                 }
                 // hex string literal
-                'X' => {
-                    self.iter.next();
-                    match self.iter.peek() {
-                        // X'...' - a <hexadecimal character string literal>
-                        Some('\'') => Ok(Some(Token::HexString(
-                            self.tokenize_single_quoted_string()?,
-                        ))),
-                        // regular identifier starting with an "X"
-                        _ => todo!(),
+                // The spec only allows an uppercase 'X' to introduce a binary string literal,
+                // but PostgreSQL/MySQL, at least, allow a lowercase 'x' too.
+                x @ 'X' | x @ 'x' => {
+                    if self.next_if_is('\'') {
+                        // X'...' - <hexadecimal character string literal>
+                        // open quote has been consumed
+                        let s = self.tokenize_string_literal('\'')?;
+                        Ok(Some(Token::HexString(s)))
+                    } else {
+                        // regular identifier starting with an "X" or "x"
+                        let ident = self.tokenize_ident(x);
+                        Ok(Some(Token::ident(ident, None)))
                     }
                 }
+                // bit string literal
+                // The spec don't allows an 'B' or 'b' to introduce a binary string literal,
+                // but PostgreSQL/MySQL, at least, allow a uppercase 'B' and lowercase 'b'.
+                b @ 'B' | b @ 'b' => {
+                    if self.next_if_is('\'') {
+                        // B'...' - <binary character string literal>
+                        // open quote has been consumed
+                        let s = self.tokenize_string_literal('\'')?;
+                        Ok(Some(Token::BitString(s)))
+                    } else {
+                        // regular identifier starting with an "B" or "b"
+                        let ident = self.tokenize_ident(b);
+                        Ok(Some(Token::ident(ident, None)))
+                    }
+                }
+                // string literal
+                quote if self.dialect.lexer_conf().is_string_literal_quotation(quote) => {
+                    self.iter.next(); // consume the open quotation mark of string literal
+                    let s = self.tokenize_string_literal(quote)?;
+                    Ok(Some(Token::String(s)))
+                }
+                // delimited (quoted) identifier
+                quote
+                    if self
+                        .dialect
+                        .lexer_conf()
+                        .is_delimited_identifier_start(quote) =>
+                {
+                    self.iter.next(); // consume the open quotation mark of delimited identifier
+                    let ident = self.tokenize_delimited_ident(quote)?;
+                    Ok(Some(Token::ident(ident, Some(quote))))
+                }
+                // identifier or keyword
+                ch if self.dialect.lexer_conf().is_identifier_start(ch) => {
+                    self.iter.next();
+                    let ident = self.tokenize_ident(ch);
+                    Ok(Some(Token::ident(ident, None)))
+                }
+                // number or period
+                ch if ch.is_ascii_digit() || ch == '.' => self.tokenize_number(),
                 _ => self.tokenize_symbol(),
             },
             None => Ok(None),
@@ -134,21 +173,49 @@ impl<'a, D: Dialect> Lexer<'a, D> {
             '\t' => Whitespace::Tab,
             '\r' => {
                 // Emit a single Whitespace::Newline token for \r and \r\n
-                self.next_if(|c| c == '\n');
+                self.iter.next_if(|c| c == &'\n');
                 Whitespace::Newline
             }
             _ => unreachable!(),
         })
     }
 
-    fn tokenize_single_quoted_string(&mut self) -> Result<String, LexerError> {
-        assert!(self.next_if_is('\''));
-
-        let mut s = String::new();
-        Ok(s)
+    fn tokenize_string_literal(&mut self, quote: char) -> Result<String, LexerError> {
+        let s = self.next_while(|&ch| ch != quote);
+        // consume the close quote.
+        if self.iter.next() == Some(quote) {
+            Ok(s)
+        } else {
+            self.tokenize_error("Unterminated string literal")
+        }
     }
 
-    fn tokenize_number(&mut self) -> Result<String, LexerError> {
+    fn tokenize_delimited_ident(&mut self, open_quote: char) -> Result<String, LexerError> {
+        let close_quote = match open_quote {
+            '"' => '"', // ANSI and most dialects
+            '`' => '`', // MySQL
+            _ => return self.tokenize_error("Unexpected quoting style"),
+        };
+        let s = self.next_while(|&ch| ch != close_quote);
+        // consume the close quote.
+        if self.iter.next() == Some(close_quote) {
+            Ok(s)
+        } else {
+            self.tokenize_error(format!(
+                "Expected close delimiter '{}' before EOF",
+                close_quote
+            ))
+        }
+    }
+
+    fn tokenize_ident(&mut self, first: char) -> String {
+        let mut ident = first.to_string();
+        let predicate = |ch: &char| self.dialect.lexer_conf().is_identifier_part(*ch);
+        ident.push_str(&next_while(&mut self.iter, predicate));
+        ident
+    }
+
+    fn tokenize_number(&mut self) -> Result<Option<Token<D::Keyword>>, LexerError> {
         todo!()
     }
 
@@ -158,7 +225,6 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                 Some(match ch {
                     ',' => Token::Comma,
                     ';' => Token::SemiColon,
-                    '.' => Token::Period,
                     ':' => Token::Colon,
 
                     '(' => Token::LeftParen,
@@ -209,23 +275,15 @@ impl<'a, D: Dialect> Lexer<'a, D> {
 
     /// Tokenizes single-line comment and returns the comment.
     fn tokenize_single_line_comment(&mut self, prefix: impl Into<String>) -> Comment {
-        let comment = self.next_while(|c| c != '\n').unwrap_or_default();
+        let comment = self.next_while(|c| c != &'\n');
         Comment::SingleLine {
             prefix: prefix.into(),
             comment,
         }
     }
 
-    /// Grabs the next character if it matches the predicate function
-    fn next_if<F: Fn(char) -> bool>(&mut self, predicate: F) -> Option<char> {
-        self.iter.peek().filter(|&c| predicate(*c))?;
-        self.iter.next()
-    }
-
-    /// Consumes the next character if it matches the character `ch`, and returns true if it matches.
-    #[inline]
-    fn next_if_is(&mut self, ch: char) -> bool {
-        self.next_if(|c| c == ch).is_some()
+    fn tokenize_error<R>(&self, message: impl Into<String>) -> Result<R, LexerError> {
+        Err(self.location.into_error(message))
     }
 
     /// Grabs the next single-character token if the tokenizer function returns one
@@ -238,17 +296,25 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         Some(token)
     }
 
+    /// Consumes the next character if it matches the character `ch`, and returns true if it matches.
+    #[inline]
+    fn next_if_is(&mut self, ch: char) -> bool {
+        self.iter.next_if_eq(&ch).is_some()
+    }
+
     /// Grabs the next characters that match the predicate, as a string
-    fn next_while<F: Fn(char) -> bool>(&mut self, predicate: F) -> Option<String> {
-        let mut value = String::new();
-        while let Some(c) = self.next_if(&predicate) {
-            value.push(c)
-        }
-        Some(value).filter(|v| !v.is_empty())
+    fn next_while<F: Fn(&char) -> bool>(&mut self, predicate: F) -> String {
+        next_while(&mut self.iter, predicate)
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+fn next_while<F: Fn(&char) -> bool>(chars: &mut Peekable<Chars<'_>>, predicate: F) -> String {
+    let mut value = String::new();
+    while let Some(c) = chars.next_if(&predicate) {
+        value.push(c)
+    }
+    value
 }
+
+#[cfg(test)]
+mod tests {}

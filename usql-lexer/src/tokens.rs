@@ -2,7 +2,7 @@
 use alloc::string::String;
 use core::fmt;
 
-use crate::dialect::KeywordDef;
+use usql_core::KeywordDef;
 
 /// SQL token
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -15,29 +15,27 @@ pub enum Token<K> {
 
     /// An unsigned numeric literal.
     Number(String),
+
     /// Character string literal: i.e: 'string'
     String(String),
     /// National character string literal: i.e: N'string'.
     NationalString(String),
-    /// Bit string literal: i.e.: B'101010'.
-    BitString(String),
     /// Hexadecimal string literal: i.e.: X'deadbeef'.
     HexString(String),
+    /// Bit string literal: i.e.: B'101010'. (Not ANSI SQL)
+    BitString(String),
 
     /// An optionally quoted SQL identifier.
     Ident(Ident),
     /// A keyword.
     Keyword(K, &'static str),
 
-    /// A character that could not be tokenized.
-    Other(char),
-
+    /// Period `.`
+    Period,
     /// Comma `,`
     Comma,
     /// SemiColon `;`
     SemiColon,
-    /// Period `.`
-    Period,
     /// Colon `:`
     Colon,
     /// Double colon `::`
@@ -107,6 +105,9 @@ pub enum Token<K> {
     Sharp,
     /// At `@`
     At,
+
+    /// A character that could not be tokenized.
+    Other(char),
 }
 
 impl<K: fmt::Display> fmt::Display for Token<K> {
@@ -162,21 +163,14 @@ impl<K: fmt::Display> fmt::Display for Token<K> {
 }
 
 impl<K: KeywordDef> Token<K> {
-    /// Creates a SQL keyword.
-    pub fn keyword(keyword: impl AsRef<str>) -> Option<Self> {
-        let keyword_uppercase = keyword.as_ref().to_uppercase();
+    /// Creates a SQL keyword or an optionally quoted SQL identifier.
+    pub fn ident(ident: impl Into<String>, quote: Option<char>) -> Self {
+        let ident = ident.into();
+        let ident_uppercase = ident.to_uppercase();
         K::KEYWORD_STRINGS
-            .binary_search(&keyword_uppercase.as_str())
+            .binary_search(&ident_uppercase.as_str())
             .map(|x| Self::Keyword(K::KEYWORDS[x].clone(), K::KEYWORD_STRINGS[x]))
-            .ok()
-    }
-
-    /// Creates an optionally quoted SQL identifier.
-    pub fn ident(value: impl Into<String>, quote: Option<char>) -> Self {
-        Self::Ident(Ident {
-            value: value.into(),
-            quote,
-        })
+            .unwrap_or_else(|_| Self::ident(ident, quote))
     }
 }
 
