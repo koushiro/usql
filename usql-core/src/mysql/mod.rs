@@ -1,24 +1,10 @@
 mod keyword;
 
 pub use self::keyword::MysqlKeyword;
-use crate::dialect::{CustomDialect, Dialect, DialectLexerConf, DialectParserConf};
+use crate::dialect::{CustomDialect, DialectLexerConf, DialectParserConf};
 
 /// The MySQL dialect.
-pub type MysqlDialect = CustomDialect<MySqlLexerConfig, MysqlParserConfig>;
-
-impl Dialect for MysqlDialect {
-    type Keyword = MysqlKeyword;
-    type LexerConf = MySqlLexerConfig;
-    type ParserConf = MysqlParserConfig;
-
-    fn lexer_conf(&self) -> &Self::LexerConf {
-        self.lexer_conf()
-    }
-
-    fn parser_conf(&self) -> &Self::ParserConf {
-        self.parser_conf()
-    }
-}
+pub type MysqlDialect = CustomDialect<MysqlKeyword, MySqlLexerConfig, MysqlParserConfig>;
 
 /// The lexer configuration of MySQL dialect.
 #[derive(Clone, Debug)]

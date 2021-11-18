@@ -1,24 +1,10 @@
 mod keyword;
 
 pub use self::keyword::AnsiKeyword;
-use crate::dialect::{CustomDialect, Dialect, DialectLexerConf, DialectParserConf};
+use crate::dialect::{CustomDialect, DialectLexerConf, DialectParserConf};
 
 /// The ANSI dialect.
-pub type AnsiDialect = CustomDialect<AnsiLexerConfig, AnsiParserConfig>;
-
-impl Dialect for AnsiDialect {
-    type Keyword = AnsiKeyword;
-    type LexerConf = AnsiLexerConfig;
-    type ParserConf = AnsiParserConfig;
-
-    fn lexer_conf(&self) -> &Self::LexerConf {
-        self.lexer_conf()
-    }
-
-    fn parser_conf(&self) -> &Self::ParserConf {
-        self.parser_conf()
-    }
-}
+pub type AnsiDialect = CustomDialect<AnsiKeyword, AnsiLexerConfig, AnsiParserConfig>;
 
 /// The lexer configuration of ANSI dialect.
 #[derive(Clone, Debug, Default)]

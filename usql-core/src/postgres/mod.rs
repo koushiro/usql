@@ -1,24 +1,10 @@
 mod keyword;
 
 pub use self::keyword::PostgresKeyword;
-use crate::dialect::{CustomDialect, Dialect, DialectLexerConf, DialectParserConf};
+use crate::dialect::{CustomDialect, DialectLexerConf, DialectParserConf};
 
 /// The PostgreSQL dialect.
-pub type PostgresDialect = CustomDialect<PostgresLexerConfig, PostgresParserConfig>;
-
-impl Dialect for PostgresDialect {
-    type Keyword = PostgresKeyword;
-    type LexerConf = PostgresLexerConfig;
-    type ParserConf = PostgresParserConfig;
-
-    fn lexer_conf(&self) -> &Self::LexerConf {
-        self.lexer_conf()
-    }
-
-    fn parser_conf(&self) -> &Self::ParserConf {
-        self.parser_conf()
-    }
-}
+pub type PostgresDialect = CustomDialect<PostgresKeyword, PostgresLexerConfig, PostgresParserConfig>;
 
 /// The lexer configuration of PostgreSQL dialect.
 #[derive(Clone, Debug, Default)]

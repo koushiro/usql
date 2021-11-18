@@ -1,24 +1,10 @@
 mod keyword;
 
 pub use self::keyword::SqliteKeyword;
-use crate::dialect::{CustomDialect, Dialect, DialectLexerConf, DialectParserConf};
+use crate::dialect::{CustomDialect, DialectLexerConf, DialectParserConf};
 
 /// The SQLite dialect.
-pub type SqliteDialect = CustomDialect<SqliteLexerConfig, SqliteParserConfig>;
-
-impl Dialect for SqliteDialect {
-    type Keyword = SqliteKeyword;
-    type LexerConf = SqliteLexerConfig;
-    type ParserConf = SqliteParserConfig;
-
-    fn lexer_conf(&self) -> &Self::LexerConf {
-        self.lexer_conf()
-    }
-
-    fn parser_conf(&self) -> &Self::ParserConf {
-        self.parser_conf()
-    }
-}
+pub type SqliteDialect = CustomDialect<SqliteKeyword, SqliteLexerConfig, SqliteParserConfig>;
 
 /// The lexer configuration of SQLite dialect.
 #[derive(Clone, Debug, Default)]

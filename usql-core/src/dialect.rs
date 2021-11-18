@@ -1,16 +1,28 @@
-use core::fmt::{Debug, Display};
+use core::{fmt::{Debug, Display}, marker::PhantomData};
 
-/// A customizable SQL dialect structure.
-#[derive(Clone, Debug, Default)]
-pub struct CustomDialect<L, P> {
+/// A simple customizable SQL dialect structure.
+#[derive(Clone, Debug)]
+pub struct CustomDialect<K, L, P> {
+    _keyword: PhantomData<K>,
     lexer_conf: L,
     parser_conf: P,
 }
 
-impl<L: DialectLexerConf, P: DialectParserConf> CustomDialect<L, P> {
+impl<K, L: Default, P: Default> Default for CustomDialect<K, L, P> {
+    fn default() -> Self {
+        Self {
+            _keyword: PhantomData,
+            lexer_conf: L::default(),
+            parser_conf: P::default(),
+        }
+    }
+}
+
+impl<K: KeywordDef, L: DialectLexerConf, P: DialectParserConf> CustomDialect<K, L, P> {
     /// Creates a new SQL Dialect.
     pub fn new(lexer_conf: L, parser_conf: P) -> Self {
         Self {
+            _keyword: PhantomData,
             lexer_conf,
             parser_conf,
         }
@@ -24,6 +36,20 @@ impl<L: DialectLexerConf, P: DialectParserConf> CustomDialect<L, P> {
     /// Returns the parser configuration.
     pub fn parser_conf(&self) -> &P {
         &self.parser_conf
+    }
+}
+
+impl<K: KeywordDef, L: DialectLexerConf, P: DialectParserConf> Dialect for CustomDialect<K, L, P> {
+    type Keyword = K;
+    type LexerConf = L;
+    type ParserConf = P;
+
+    fn lexer_conf(&self) -> &Self::LexerConf {
+        self.lexer_conf()
+    }
+
+    fn parser_conf(&self) -> &Self::ParserConf {
+        self.parser_conf()
     }
 }
 
