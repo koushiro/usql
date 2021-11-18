@@ -133,7 +133,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                     }
                 }
                 // bit string literal
-                // The spec don't allows an 'B' or 'b' to introduce a binary string literal,
+                // The spec don't allows a 'B' or 'b' to introduce a binary string literal,
                 // but PostgreSQL/MySQL, at least, allow a uppercase 'B' and lowercase 'b'.
                 b @ 'B' | b @ 'b' => {
                     self.iter.next(); // consume the character and check the next one

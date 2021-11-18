@@ -105,13 +105,13 @@ pub trait DialectLexerConf: Clone + Debug {
     }
 
     /// Determine if the whitespace token will be ignored.
-    /// Whitespace will be excluded in the result of lexical tokens.
+    /// If enable it, whitespace will be excluded from the result of lexical analysis.
     fn ignore_whitespace(&self) -> bool {
         false
     }
 
     /// Determine if the comment token will be ignored.
-    /// Comment will be excluded in the result of lexical tokens.
+    /// If enable it, comment will be excluded from the result of lexical analysis.
     fn ignore_comment(&self) -> bool {
         false
     }
