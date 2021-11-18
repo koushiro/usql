@@ -1,5 +1,32 @@
 use core::fmt::{Debug, Display};
 
+/// A customizable SQL dialect structure.
+#[derive(Clone, Debug, Default)]
+pub struct CustomDialect<L, P> {
+    lexer_conf: L,
+    parser_conf: P,
+}
+
+impl<L: DialectLexerConf, P: DialectParserConf> CustomDialect<L, P> {
+    /// Creates a new SQL Dialect.
+    pub fn new(lexer_conf: L, parser_conf: P) -> Self {
+        Self {
+            lexer_conf,
+            parser_conf,
+        }
+    }
+
+    /// Returns the lexer configuration.
+    pub fn lexer_conf(&self) -> &L {
+        &self.lexer_conf
+    }
+
+    /// Returns the parser configuration.
+    pub fn parser_conf(&self) -> &P {
+        &self.parser_conf
+    }
+}
+
 /// The marker for a dialect.
 pub trait Dialect: Debug {
     /// The keyword definition of the dialect.

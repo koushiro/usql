@@ -14,6 +14,7 @@ mod macros;
 mod dialect;
 
 /// ANSI SQL-2016.
+#[cfg(feature = "ansi")]
 pub mod ansi;
 /// MySQL 8.0.
 #[cfg(feature = "mysql")]
@@ -25,4 +26,4 @@ pub mod postgres;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
 
-pub use self::dialect::{Dialect, DialectLexerConf, DialectParserConf, KeywordDef};
+pub use self::dialect::{CustomDialect, Dialect, DialectLexerConf, DialectParserConf, KeywordDef};

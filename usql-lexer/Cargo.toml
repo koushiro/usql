@@ -21,4 +21,4 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 usql-core = { path = "../usql-core", default-features = false }
 
 [dev-dependencies]
-usql-core = { path = "../usql-core", default-features = false, features = ["postgres", "mysql", "sqlite"] }
+usql-core = { path = "../usql-core", default-features = false, features = ["ansi", "postgres", "mysql", "sqlite"] }
