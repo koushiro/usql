@@ -307,7 +307,11 @@ impl<'a, D: Dialect> Lexer<'a, D> {
 
     /// Tokenizes single-line comment and returns the comment.
     fn tokenize_single_line_comment(&mut self, prefix: impl Into<String>) -> Comment {
-        let comment = self.next_while(|c| c != &'\n');
+        let mut comment = self.next_while(|c| c != &'\n');
+        if let Some(ch) = self.iter.next() {
+            assert_eq!(ch, '\n');
+            comment.push(ch);
+        }
         Comment::SingleLine {
             prefix: prefix.into(),
             comment,
@@ -402,9 +406,8 @@ mod tests {
                 Token::Number("0".into()),
                 Token::Comment(Comment::SingleLine {
                     prefix: "--".into(),
-                    comment: "this is single line comment".into()
+                    comment: "this is single line comment\n".into()
                 }),
-                Token::Whitespace(Whitespace::Newline),
                 Token::Number("1".into())
             ])
         );
