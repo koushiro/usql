@@ -107,7 +107,7 @@ pub enum Token<K> {
     At,
 
     /// A character that could not be tokenized.
-    Other(char),
+    Char(char),
 }
 
 impl<K: fmt::Display> fmt::Display for Token<K> {
@@ -157,20 +157,32 @@ impl<K: fmt::Display> fmt::Display for Token<K> {
             Token::Backslash => f.write_str("\\"),
             Token::Sharp => f.write_str("#"),
             Token::At => f.write_str("@"),
-            Token::Other(c) => write!(f, "{}", c),
+            Token::Char(c) => write!(f, "{}", c),
         }
     }
 }
 
 impl<K: KeywordDef> Token<K> {
     /// Creates a SQL keyword or an optionally quoted SQL identifier.
-    pub fn ident(ident: impl Into<String>, quote: Option<char>) -> Self {
-        let ident = ident.into();
-        let ident_uppercase = ident.to_uppercase();
+    pub fn make(value: impl Into<String>, quote: Option<char>) -> Self {
+        let value = value.into();
+        Self::keyword(value.as_str()).unwrap_or_else(|| Self::ident(value, quote))
+    }
+
+    /// Creates a SQL keyword.
+    pub fn keyword(keyword: impl AsRef<str>) -> Option<Self> {
+        let keyword = keyword.as_ref();
+        let keyword_uppercase = keyword.to_uppercase();
         K::KEYWORD_STRINGS
-            .binary_search(&ident_uppercase.as_str())
+            .binary_search(&keyword_uppercase.as_str())
             .map(|x| Self::Keyword(K::KEYWORDS[x].clone(), K::KEYWORD_STRINGS[x]))
-            .unwrap_or_else(|_| Self::ident(ident, quote))
+            .ok()
+    }
+
+    /// Creates an optionally quoted SQL identifier.
+    pub fn ident(value: impl Into<String>, quote: Option<char>) -> Self {
+        let value = value.into();
+        Self::Ident(Ident { value, quote })
     }
 }
 

@@ -56,14 +56,14 @@ impl DialectLexerConf for SqliteLexerConfig {
         ch.is_ascii_alphabetic()
             || ch == '_'
             || ch == '$'
-            || ('\u{007f}'..='\u{ffff}').contains(&ch)
+            || ('\u{0080}'..='\u{ffff}').contains(&ch)
     }
 
     fn is_identifier_part(&self, ch: char) -> bool {
         ch.is_ascii_alphanumeric()
             || ch == '_'
             || ch == '$'
-            || ('\u{007f}'..='\u{ffff}').contains(&ch)
+            || ('\u{0080}'..='\u{ffff}').contains(&ch)
     }
 }
 

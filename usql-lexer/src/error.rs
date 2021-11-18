@@ -3,7 +3,7 @@ use alloc::string::String;
 use core::fmt;
 
 /// Location info for input.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[doc(hidden)]
 pub struct Location {
     pub line: u64,
@@ -32,7 +32,7 @@ impl Location {
 }
 
 /// Lexer error
-#[derive(Clone, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct LexerError {
     /// The specified error message.
     pub message: String,
