@@ -41,6 +41,16 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         let mut tokens = vec![];
         while let Some(token) = self.next_token()? {
             self.record_location(&token);
+            if self.dialect.lexer_conf().ignore_whitespace() {
+                if let Token::Whitespace(_) = token {
+                    continue;
+                }
+            }
+            if self.dialect.lexer_conf().ignore_comment() {
+                if let Token::Comment(_) = token {
+                    continue;
+                }
+            }
             tokens.push(token);
         }
         Ok(tokens)
