@@ -31,7 +31,6 @@ impl DialectLexerConf for MyDialect1LexerConfig {
     }
 }
 
-
 #[derive(Clone, Debug, Default)]
 pub struct MyDialect2LexerConfig;
 impl DialectLexerConf for MyDialect2LexerConfig {
@@ -43,7 +42,6 @@ impl DialectLexerConf for MyDialect2LexerConfig {
         true
     }
 }
-
 
 #[derive(Clone, Debug, Default)]
 pub struct MyDialectParserConfig;
