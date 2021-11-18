@@ -1,10 +1,7 @@
-use core::{
-    any::Any,
-    fmt::{Debug, Display},
-};
+use core::fmt::{Debug, Display};
 
 /// The marker for a dialect.
-pub trait Dialect: Any + Debug {
+pub trait Dialect: Debug {
     /// The keyword definition of the dialect.
     type Keyword: KeywordDef;
 
