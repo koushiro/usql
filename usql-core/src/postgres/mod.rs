@@ -4,7 +4,8 @@ pub use self::keyword::PostgresKeyword;
 use crate::dialect::{CustomDialect, DialectLexerConf, DialectParserConf};
 
 /// The PostgreSQL dialect.
-pub type PostgresDialect = CustomDialect<PostgresKeyword, PostgresLexerConfig, PostgresParserConfig>;
+pub type PostgresDialect =
+    CustomDialect<PostgresKeyword, PostgresLexerConfig, PostgresParserConfig>;
 
 /// The lexer configuration of PostgreSQL dialect.
 #[derive(Clone, Debug, Default)]

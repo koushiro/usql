@@ -1,4 +1,7 @@
-use core::{fmt::{Debug, Display}, marker::PhantomData};
+use core::{
+    fmt::{Debug, Display},
+    marker::PhantomData,
+};
 
 /// A simple customizable SQL dialect structure.
 #[derive(Clone, Debug)]
@@ -27,16 +30,6 @@ impl<K: KeywordDef, L: DialectLexerConf, P: DialectParserConf> CustomDialect<K, 
             parser_conf,
         }
     }
-
-    /// Returns the lexer configuration.
-    pub fn lexer_conf(&self) -> &L {
-        &self.lexer_conf
-    }
-
-    /// Returns the parser configuration.
-    pub fn parser_conf(&self) -> &P {
-        &self.parser_conf
-    }
 }
 
 impl<K: KeywordDef, L: DialectLexerConf, P: DialectParserConf> Dialect for CustomDialect<K, L, P> {
@@ -45,11 +38,11 @@ impl<K: KeywordDef, L: DialectLexerConf, P: DialectParserConf> Dialect for Custo
     type ParserConf = P;
 
     fn lexer_conf(&self) -> &Self::LexerConf {
-        self.lexer_conf()
+        &self.lexer_conf
     }
 
     fn parser_conf(&self) -> &Self::ParserConf {
-        self.parser_conf()
+        &self.parser_conf
     }
 }
 

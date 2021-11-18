@@ -1,7 +1,4 @@
-use usql_core::{
-    ansi::AnsiKeyword, CustomDialect, Dialect, DialectLexerConf,
-    DialectParserConf,
-};
+use usql_core::{ansi::AnsiKeyword, CustomDialect, Dialect, DialectLexerConf, DialectParserConf};
 use usql_lexer::{Lexer, LexerError};
 
 pub type MyDialect1 = CustomDialect<AnsiKeyword, MyDialectLexerConfig, MyDialectParserConfig>;
