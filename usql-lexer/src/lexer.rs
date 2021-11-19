@@ -569,7 +569,11 @@ mod tests {
         // unterminated string literal
         tokenize!(
             "select 'foo",
-            Err(Location { line: 1, column: 12 }.into_error("Unterminated string literal"))
+            Err(Location {
+                line: 1,
+                column: 12
+            }
+            .into_error("Unterminated string literal"))
         );
     }
 
