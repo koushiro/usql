@@ -62,27 +62,32 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                 self.location.line += 1;
                 self.location.column = 1;
             }
-            Token::Whitespace(Whitespace::Tab) => self.location.column += 4,
             Token::Comment(Comment::SingleLine { .. }) => {
                 self.location.line += 1;
                 self.location.column = 1;
             }
-            Token::Comment(Comment::MultiLine(..)) => {
-                todo!()
+            Token::Comment(Comment::MultiLine(lines)) => {
+                if lines.len() == 1 {
+                    self.location.line += 1;
+                    self.location.column += lines[0].len() + "/**/".len();
+                } else {
+                    self.location.line += lines.len();
+                    self.location.column = lines[lines.len() - 1].len() + "/**/".len();
+                }
             }
-            Token::Number(s) => self.location.column += s.len() as u64,
-            Token::String(s) => self.location.column += s.len() as u64,
+            Token::Number(s) => self.location.column += s.len(),
+            Token::String(s) => self.location.column += s.len(),
             Token::NationalString(s) | Token::BitString(s) | Token::HexString(s) => {
-                self.location.column += 1 + s.len() as u64
+                self.location.column += 1 + s.len()
             }
             Token::Ident(ident) => {
                 if ident.quote.is_some() {
-                    self.location.column += ident.value.len() as u64 + 2;
+                    self.location.column += ident.value.len() + 2;
                 } else {
-                    self.location.column += ident.value.len() as u64;
+                    self.location.column += ident.value.len();
                 }
             }
-            Token::Keyword(_, keyword) => self.location.column += keyword.len() as u64,
+            Token::Keyword(_, keyword) => self.location.column += keyword.len(),
             Token::DoubleColon
             | Token::NotEqual
             | Token::LessThanOrEqual
@@ -295,6 +300,9 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                 Token::Minus if self.next_if_is('-') => {
                     Token::Comment(self.tokenize_single_line_comment("--"))
                 }
+                Token::Slash if self.next_if_is('*') => {
+                    Token::Comment(self.tokenize_multi_line_comment()?)
+                }
                 Token::Exclamation if self.next_if_is('=') => Token::NotEqual,
                 Token::Exclamation if self.next_if_is('!') => Token::DoubleExclamation,
                 Token::Pipe if self.next_if_is('|') => Token::Concat,
@@ -315,6 +323,35 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         Comment::SingleLine {
             prefix: prefix.into(),
             comment,
+        }
+    }
+
+    /// Tokenize multi-line comment and returns the comment.
+    fn tokenize_multi_line_comment(&mut self) -> Result<Comment, LexerError> {
+        let mut comment = String::new();
+        let mut nested = 1;
+        loop {
+            match self.iter.next() {
+                Some(ch) => {
+                    if ch == '*' && self.next_if_is('/') {
+                        if nested == 1 {
+                            let lines = comment.split('\n').map(|s| s.to_string()).collect();
+                            break Ok(Comment::MultiLine(lines));
+                        } else {
+                            nested -= 1;
+                            comment.push_str("*/");
+                        }
+                    } else if ch == '/' && self.next_if_is('*') {
+                        nested += 1;
+                        comment.push_str("/*");
+                    } else {
+                        comment.push(ch);
+                    }
+                }
+                None => {
+                    return self.tokenize_error("Unexpected EOF while in a multi-line comment");
+                }
+            }
         }
     }
 
@@ -398,7 +435,7 @@ mod tests {
     }
 
     #[test]
-    fn tokenize_comment() {
+    fn tokenize_single_line_comment() {
         // single-line comment
         tokenize!(
             "0--this is single line comment\n1",
@@ -423,8 +460,63 @@ mod tests {
                 }),
             ])
         );
+    }
 
-        // TODO: multi-line comment
+    #[test]
+    fn tokenize_multi_line_comment() {
+        tokenize!(
+            "/**/",
+            Ok(vec![Token::Comment(Comment::MultiLine(vec!["".into()]))])
+        );
+        tokenize!(
+            "/***/",
+            Ok(vec![Token::Comment(Comment::MultiLine(vec!["*".into()]))])
+        );
+        tokenize!(
+            "/*/*/",
+            Err(Location { line: 1, column: 1 }
+                .into_error("Unexpected EOF while in a multi-line comment"))
+        );
+        tokenize!(
+            "/*line1*/",
+            Ok(vec![Token::Comment(Comment::MultiLine(vec![
+                "line1".into()
+            ]))])
+        );
+        tokenize!(
+            "/*line1\nline2*/",
+            Ok(vec![Token::Comment(Comment::MultiLine(vec![
+                "line1".into(),
+                "line2".into(),
+            ]))])
+        );
+        tokenize!(
+            "/*\n--line1\nline2*/",
+            Ok(vec![Token::Comment(Comment::MultiLine(vec![
+                "".into(),
+                "--line1".into(),
+                "line2".into()
+            ]))])
+        );
+        tokenize!(
+            "/*--line1\nline2",
+            Err(Location { line: 1, column: 1 }
+                .into_error("Unexpected EOF while in a multi-line comment"))
+        );
+        tokenize!(
+            "/*line1\n/*line2*/*/",
+            Ok(vec![Token::Comment(Comment::MultiLine(vec![
+                "line1".into(),
+                "/*line2*/".into()
+            ]))])
+        );
+        tokenize!(
+            "/*line1\n/*line2*/**/",
+            Ok(vec![Token::Comment(Comment::MultiLine(vec![
+                "line1".into(),
+                "/*line2*/*".into()
+            ]))])
+        );
     }
 
     #[test]

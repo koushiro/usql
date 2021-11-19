@@ -6,8 +6,8 @@ use core::fmt;
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[doc(hidden)]
 pub struct Location {
-    pub line: u64,
-    pub column: u64,
+    pub line: usize,
+    pub column: usize,
 }
 
 impl fmt::Display for Location {

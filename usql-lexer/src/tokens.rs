@@ -1,5 +1,5 @@
 #[cfg(not(feature = "std"))]
-use alloc::string::String;
+use alloc::{string::String, vec::Vec};
 use core::fmt;
 
 use usql_core::KeywordDef;
@@ -218,14 +218,24 @@ pub enum Comment {
         comment: String,
     },
     /// Multiple line comment.
-    MultiLine(String),
+    MultiLine(Vec<String>),
 }
 
 impl fmt::Display for Comment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::SingleLine { prefix, comment } => write!(f, "{} {}", prefix, comment),
-            Self::MultiLine(s) => write!(f, "/*{}*/", s),
+            Self::SingleLine { prefix, comment } => write!(f, "{}{}", prefix, comment),
+            Self::MultiLine(lines) => {
+                f.write_str("/*")?;
+                let mut delim = "";
+                for line in lines {
+                    write!(f, "{}", delim)?;
+                    delim = "\n";
+                    write!(f, "{}", line)?;
+                }
+                f.write_str("*/")?;
+                Ok(())
+            }
         }
     }
 }
@@ -251,5 +261,22 @@ impl fmt::Display for Ident {
             Some(q) if q == '"' || q == '`' => write!(f, "{}{}{}", q, self.value, q),
             Some(q) => panic!("Unsupported quote character {} for SQL identifier!", q),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn comment_display() {
+        let comment = Comment::SingleLine {
+            prefix: "--".into(),
+            comment: "this is single line comment".into(),
+        };
+        assert_eq!(comment.to_string(), "--this is single line comment");
+
+        let comment = Comment::MultiLine(vec!["line1".into(), "line2".into()]);
+        assert_eq!(comment.to_string(), "/*line1\nline2*/");
     }
 }
