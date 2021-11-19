@@ -2,16 +2,21 @@
 # Only SQL:2016, PostgreSQL, MariaDB/MySQL, SQLite
 ###############################################################################
 
+# https://github.com/JakeWheat/sql-overview/blob/master/sql-2016-foundation-grammar.txt
+#
+# Copy <reserved word> into tmp.txt
+# cat tmp.txt | grep -oe "\w*" > sql2016.txt
+
 # Wikipedia
 # Table: SQL:2016, DB2, Mimer SQL, MySQL, Oracle, PostgreSQL, MSSQL, Teradata
 # All SQL reserved words
 
-echo 'Getting SQL-2016 keywords...'
-
-curl -s https://en.wikipedia.org/wiki/SQL_reserved_words | pcregrep -M 'class="table-rh">.*\n</th>\n<td>SQL-2016</td>' | \
-  grep -oe 'class="table-rh">\w*' | awk -F ">" '{print $2}' | sort | uniq > sql2016.txt
-
-echo 'SQL-2016: DONE'
+#echo 'Getting SQL:2016 keywords...'
+#
+#curl -s https://en.wikipedia.org/wiki/SQL_reserved_words | pcregrep -M 'class="table-rh">.*\n</th>\n<td>SQL-2016</td>' | \
+#  grep -oe 'class="table-rh">\w*' | awk -F ">" '{print $2}' | sort | uniq > sql2016.txt
+#
+#echo 'SQL:2016: DONE'
 
 ###############################################################################
 

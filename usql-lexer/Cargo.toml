@@ -16,6 +16,9 @@ default = ["std"]
 std = ["usql-core/std"]
 
 [dependencies]
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
+
 usql-core = { path = "../usql-core", default-features = false }
 
 [dev-dependencies]
+usql-core = { path = "../usql-core", default-features = false, features = ["ansi", "postgres", "mysql", "sqlite"] }

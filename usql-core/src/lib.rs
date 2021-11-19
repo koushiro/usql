@@ -12,9 +12,9 @@ extern crate alloc;
 #[macro_use]
 mod macros;
 mod dialect;
-mod tokens;
 
 /// ANSI SQL-2016.
+#[cfg(feature = "ansi")]
 pub mod ansi;
 /// MySQL 8.0.
 #[cfg(feature = "mysql")]
@@ -26,7 +26,4 @@ pub mod postgres;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
 
-pub use self::{
-    dialect::{Dialect, DialectLexerConf, DialectParserConf, KeywordDef},
-    tokens::{Comment, Ident, Token, Whitespace},
-};
+pub use self::dialect::{CustomDialect, Dialect, DialectLexerConf, DialectParserConf, KeywordDef};

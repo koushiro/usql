@@ -15,6 +15,7 @@ description = "Unverisal SQL core types and traits"
 default = ["std"]
 std = []
 
+ansi = []
 mysql = []
 postgres = []
 sqlite = []
