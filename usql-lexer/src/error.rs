@@ -23,6 +23,15 @@ impl Default for Location {
 }
 
 impl Location {
+    pub(crate) fn advance(&mut self, ch: char) {
+        if ch == '\n' {
+            self.column = 1;
+            self.line += 1;
+        } else {
+            self.column += 1;
+        }
+    }
+
     pub(crate) fn into_error(self, message: impl Into<String>) -> LexerError {
         LexerError {
             message: message.into(),

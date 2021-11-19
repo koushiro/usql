@@ -40,7 +40,6 @@ impl<'a, D: Dialect> Lexer<'a, D> {
     pub fn tokenize(&mut self) -> Result<Vec<Token<D::Keyword>>, LexerError> {
         let mut tokens = vec![];
         while let Some(token) = self.next_token()? {
-            self.record_location(&token);
             if self.dialect.lexer_conf().ignore_whitespace() {
                 if let Token::Whitespace(_) = token {
                     continue;
@@ -56,60 +55,16 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         Ok(tokens)
     }
 
-    fn record_location(&mut self, token: &Token<D::Keyword>) {
-        match token {
-            Token::Whitespace(Whitespace::Newline) => {
-                self.location.line += 1;
-                self.location.column = 1;
-            }
-            Token::Comment(Comment::SingleLine { .. }) => {
-                self.location.line += 1;
-                self.location.column = 1;
-            }
-            Token::Comment(Comment::MultiLine(lines)) => {
-                if lines.len() == 1 {
-                    self.location.line += 1;
-                    self.location.column += lines[0].len() + "/**/".len();
-                } else {
-                    self.location.line += lines.len();
-                    self.location.column = lines[lines.len() - 1].len() + "/**/".len();
-                }
-            }
-            Token::Number(s) => self.location.column += s.len(),
-            Token::String(s) => self.location.column += s.len(),
-            Token::NationalString(s) | Token::BitString(s) | Token::HexString(s) => {
-                self.location.column += 1 + s.len()
-            }
-            Token::Ident(ident) => {
-                if ident.quote.is_some() {
-                    self.location.column += ident.value.len() + 2;
-                } else {
-                    self.location.column += ident.value.len();
-                }
-            }
-            Token::Keyword(_, keyword) => self.location.column += keyword.len(),
-            Token::DoubleColon
-            | Token::NotEqual
-            | Token::LessThanOrEqual
-            | Token::GreaterThanOrEqual
-            | Token::LeftShift
-            | Token::RightShift
-            | Token::DoubleExclamation
-            | Token::Concat => self.location.column += 2,
-            _ => self.location.column += 1,
-        }
-    }
-
     fn next_token(&mut self) -> Result<Option<Token<D::Keyword>>, LexerError> {
         match self.iter.peek() {
             Some(&ch) => match ch {
                 // whitespace
-                ' ' | '\n' | '\t' | '\r' => Ok(self.tokenize_whitespace().map(Token::Whitespace)),
+                ' ' | '\t' | '\n' | '\r' => Ok(self.tokenize_whitespace().map(Token::Whitespace)),
                 // national string literal
                 // The spec only allows an uppercase 'N' to introduce a national string literal,
                 // but PostgreSQL/MySQL, at least, allow a lowercase 'n' too.
                 n @ 'N' | n @ 'n' => {
-                    self.iter.next(); // consume the character and check the next one
+                    self.next_char(); // consume the character and check the next one
                     if self.next_if_is('\'') {
                         // N'...' - <national character string literal>
                         // open quote has been consumed
@@ -125,7 +80,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                 // The spec only allows an uppercase 'X' to introduce a binary string literal,
                 // but PostgreSQL/MySQL, at least, allow a lowercase 'x' too.
                 x @ 'X' | x @ 'x' => {
-                    self.iter.next(); // consume the character and check the next one
+                    self.next_char(); // consume the character and check the next one
                     if self.next_if_is('\'') {
                         // X'...' - <hexadecimal character string literal>
                         // open quote has been consumed
@@ -141,7 +96,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                 // The spec don't allows a 'B' or 'b' to introduce a binary string literal,
                 // but PostgreSQL/MySQL, at least, allow a uppercase 'B' and lowercase 'b'.
                 b @ 'B' | b @ 'b' => {
-                    self.iter.next(); // consume the character and check the next one
+                    self.next_char(); // consume the character and check the next one
                     if self.next_if_is('\'') {
                         // B'...' - <binary character string literal>
                         // open quote has been consumed
@@ -155,7 +110,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                 }
                 // string literal
                 quote if self.dialect.lexer_conf().is_string_literal_quotation(quote) => {
-                    self.iter.next(); // consume the open quotation mark of string literal
+                    self.next_char(); // consume the open quotation mark of string literal
                     let s = self.tokenize_string_literal(quote)?;
                     Ok(Some(Token::String(s)))
                 }
@@ -166,13 +121,13 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                         .lexer_conf()
                         .is_delimited_identifier_start(quote) =>
                 {
-                    self.iter.next(); // consume the open quotation mark of delimited identifier
+                    self.next_char(); // consume the open quotation mark of delimited identifier
                     let ident = self.tokenize_delimited_ident(quote)?;
                     Ok(Some(Token::make(ident, Some(quote))))
                 }
                 // identifier or keyword
                 ch if self.dialect.lexer_conf().is_identifier_start(ch) => {
-                    self.iter.next(); // consume the identifier start character
+                    self.next_char(); // consume the identifier start character
                     let ident = self.tokenize_ident(ch);
                     Ok(Some(Token::make(ident, None)))
                 }
@@ -186,12 +141,24 @@ impl<'a, D: Dialect> Lexer<'a, D> {
 
     fn tokenize_whitespace(&mut self) -> Option<Whitespace> {
         self.iter.next().map(|ch| match ch {
-            ' ' => Whitespace::Space,
-            '\n' => Whitespace::Newline,
-            '\t' => Whitespace::Tab,
+            ' ' => {
+                self.location.column += 1;
+                Whitespace::Space
+            }
+            '\t' => {
+                self.location.column += 1;
+                Whitespace::Tab
+            }
+            '\n' => {
+                self.location.line += 1;
+                self.location.column = 1;
+                Whitespace::Newline
+            }
             '\r' => {
                 // Emit a single Whitespace::Newline token for \r and \r\n
-                self.iter.next_if(|c| c == &'\n');
+                self.iter.next_if_eq(&'\n');
+                self.location.line += 1;
+                self.location.column = 1;
                 Whitespace::Newline
             }
             _ => unreachable!(),
@@ -201,7 +168,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
     fn tokenize_string_literal(&mut self, quote: char) -> Result<String, LexerError> {
         let s = self.next_while(|&ch| ch != quote);
         // consume the close quote.
-        if self.iter.next() == Some(quote) {
+        if self.next_char() == Some(quote) {
             Ok(s)
         } else {
             self.tokenize_error("Unterminated string literal")
@@ -216,7 +183,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         };
         let s = self.next_while(|&ch| ch != close_quote);
         // consume the close quote.
-        if self.iter.next() == Some(close_quote) {
+        if self.next_if_is(close_quote) {
             Ok(s)
         } else {
             self.tokenize_error(format!(
@@ -229,7 +196,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
     fn tokenize_ident(&mut self, first: char) -> String {
         let mut ident = first.to_string();
         let predicate = |ch: &char| self.dialect.lexer_conf().is_identifier_part(*ch);
-        let rest = next_while(&mut self.iter, predicate);
+        let rest = next_while(&mut self.location, &mut self.iter, predicate);
         ident.push_str(&rest);
         ident
     }
@@ -316,7 +283,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
     /// Tokenizes single-line comment and returns the comment.
     fn tokenize_single_line_comment(&mut self, prefix: impl Into<String>) -> Comment {
         let mut comment = self.next_while(|c| c != &'\n');
-        if let Some(ch) = self.iter.next() {
+        if let Some(ch) = self.next_char() {
             assert_eq!(ch, '\n');
             comment.push(ch);
         }
@@ -331,7 +298,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         let mut comment = String::new();
         let mut nested = 1;
         loop {
-            match self.iter.next() {
+            match self.next_char() {
                 Some(ch) => {
                     if ch == '*' && self.next_if_is('/') {
                         if nested == 1 {
@@ -365,26 +332,47 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         tokenizer: F,
     ) -> Option<Token<D::Keyword>> {
         let token = self.iter.peek().and_then(|&c| tokenizer(c))?;
-        self.iter.next();
+        self.next_char();
         Some(token)
     }
 
-    /// Consumes the next character if it matches the character `ch`, and returns true if it matches.
+    /// Consumes the next character and records the current location.
+    fn next_char(&mut self) -> Option<char> {
+        if let Some(ch) = self.iter.next() {
+            self.location.advance(ch);
+            Some(ch)
+        } else {
+            None
+        }
+    }
+
+    /// Consumes the next character and records the current location
+    /// if it matches the character `ch`, and returns true if it matches.
     #[inline]
     fn next_if_is(&mut self, ch: char) -> bool {
-        self.iter.next_if_eq(&ch).is_some()
+        if self.iter.next_if_eq(&ch).is_some() {
+            self.location.advance(ch);
+            true
+        } else {
+            false
+        }
     }
 
     /// Grabs the next characters that match the predicate, as a string
     fn next_while<F: Fn(&char) -> bool>(&mut self, predicate: F) -> String {
-        next_while(&mut self.iter, predicate)
+        next_while(&mut self.location, &mut self.iter, predicate)
     }
 }
 
-fn next_while<F: Fn(&char) -> bool>(chars: &mut Peekable<Chars<'_>>, predicate: F) -> String {
+fn next_while<F: Fn(&char) -> bool>(
+    loc: &mut Location,
+    chars: &mut Peekable<Chars<'_>>,
+    predicate: F,
+) -> String {
     let mut value = String::new();
-    while let Some(c) = chars.next_if(&predicate) {
-        value.push(c);
+    while let Some(ch) = chars.next_if(&predicate) {
+        loc.advance(ch);
+        value.push(ch);
     }
     value
 }
@@ -474,7 +462,7 @@ mod tests {
         );
         tokenize!(
             "/*/*/",
-            Err(Location { line: 1, column: 1 }
+            Err(Location { line: 1, column: 6 }
                 .into_error("Unexpected EOF while in a multi-line comment"))
         );
         tokenize!(
@@ -500,7 +488,7 @@ mod tests {
         );
         tokenize!(
             "/*--line1\nline2",
-            Err(Location { line: 1, column: 1 }
+            Err(Location { line: 2, column: 6 }
                 .into_error("Unexpected EOF while in a multi-line comment"))
         );
         tokenize!(
@@ -581,7 +569,7 @@ mod tests {
         // unterminated string literal
         tokenize!(
             "select 'foo",
-            Err(Location { line: 1, column: 8 }.into_error("Unterminated string literal"))
+            Err(Location { line: 1, column: 12 }.into_error("Unterminated string literal"))
         );
     }
 
@@ -592,7 +580,7 @@ mod tests {
         // mismatch quotes
         tokenize!(
             "\"foo",
-            Err(Location { line: 1, column: 1 }
+            Err(Location { line: 1, column: 5 }
                 .into_error("Expected close delimiter '\"' before EOF"))
         );
     }
