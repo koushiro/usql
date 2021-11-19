@@ -15,6 +15,7 @@ description = "Universal SQL AST (abstract syntax tree) types"
 default = ["std"]
 std = []
 
+ansi = []
 mysql = []
 postgres = []
 sqlite = []

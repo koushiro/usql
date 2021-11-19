@@ -1,4 +1,5 @@
 /// The ANSI dialect.
+#[cfg(feature = "ansi")]
 pub mod ansi;
 /// The MySQL dialect.
 #[cfg(feature = "mysql")]
