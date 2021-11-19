@@ -14,7 +14,18 @@ description = "Universal SQL Lexer and Parser"
 [features]
 default = ["std"]
 std = []
+serde = [
+  "usql-ast/serde",
+  "usql-core/serde",
+  "usql-lexer/serde",
+]
+
+ansi = ["usql-ast/ansi", "usql-core/ansi"]
+mysql = ["usql-ast/mysql", "usql-core/mysql"]
+postgres = ["usql-ast/postgres", "usql-core/postgres"]
+sqlite = ["usql-ast/sqlite", "usql-core/sqlite"]
 
 [dependencies]
-
-[dev-dependencies]
+usql-ast = { path = "../usql-ast", default-features = false, features = ["ansi", "mysql", "postgres", "sqlite"] }
+usql-core = { path = "../usql-core", default-features = false, features = ["ansi", "mysql", "postgres", "sqlite"] }
+usql-lexer = { path = "../usql-lexer", default-features = false }
