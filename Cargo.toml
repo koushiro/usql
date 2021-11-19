@@ -6,4 +6,5 @@ members = [
     "usql-lexer",
     "usql-parser",
 ]
+exclude = ["usql-bench"]
 resolver = "2"

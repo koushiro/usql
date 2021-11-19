@@ -1,0 +1,17 @@
+[package]
+name = "usql-bench"
+version = "0.0.0"
+authors = ["koushiro <koushiro.cqx@gmail.com>"]
+edition = "2021"
+rust-version = "1.56"
+
+[[bench]]
+name = "tokenize"
+path = "benches/tokenize.rs"
+harness = false
+
+[dev-dependencies]
+criterion = "0.3"
+sqlparser = "0.12"
+usql-core = { path = "../usql-core", features = ["ansi", "postgres", "mysql", "sqlite"] }
+usql-lexer = { path = "../usql-lexer" }
