@@ -12,7 +12,7 @@ repository = "https://github.com/koushiro/usql"
 description = "Universal SQL AST (abstract syntax tree) types"
 
 [features]
-default = ["std"]
+default = ["std", "ansi"]
 std = []
 
 ansi = []

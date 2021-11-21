@@ -16,17 +16,17 @@ use crate::{
 
 /// SQL Lexer
 pub struct Lexer<'a, D: Dialect> {
+    dialect: &'a D,
     iter: Peekable<Chars<'a>>,
-    dialect: D,
     location: Location,
 }
 
 impl<'a, D: Dialect> Lexer<'a, D> {
     /// Creates a new SQL lexer for the given input string.
-    pub fn new(input: &'a str, dialect: D) -> Self {
+    pub fn new(dialect: &'a D, input: &'a str) -> Self {
         Self {
-            iter: input.chars().peekable(),
             dialect,
+            iter: input.chars().peekable(),
             location: Location::default(),
         }
     }
@@ -384,7 +384,7 @@ mod tests {
     macro_rules! tokenize {
         ($input:expr, $expected:expr) => {{
             let dialect = ::usql_core::ansi::AnsiDialect::default();
-            let mut lexer = $crate::Lexer::new($input, dialect);
+            let mut lexer = $crate::Lexer::new(&dialect, $input);
             let got = lexer.tokenize();
             // println!("------------------------------");
             // println!("got = {:?}", $got);
@@ -393,7 +393,7 @@ mod tests {
             assert_eq!(got, $expected);
         }};
         ($input:expr, $expected:expr, $dialect:expr) => {{
-            let mut lexer = $crate::Lexer::new($input, $dialect);
+            let mut lexer = $crate::Lexer::new($dialect, $input);
             let got = lexer.tokenize();
             // println!("------------------------------");
             // println!("got = {:?}", $got);
@@ -627,6 +627,7 @@ mod tests {
 
     #[test]
     fn tokenize_mysql_logical_xor() {
+        let dialect = usql_core::mysql::MysqlDialect::default();
         tokenize!(
             "SELECT true XOR true, false XOR false, true XOR false, false XOR true",
             Ok(vec![
@@ -659,7 +660,7 @@ mod tests {
                 Token::Whitespace(Whitespace::Space),
                 Token::keyword("true").unwrap(),
             ]),
-            usql_core::mysql::MysqlDialect::default()
+            &dialect
         );
     }
 
