@@ -53,11 +53,13 @@ fn main() -> Result<(), LexerError> {
         SELECT * FROM a WHERE id = 1
     "#;
 
-    let mut lexer = Lexer::new(input, MyDialect1::default());
+    let dialect = MyDialect1::default();
+    let mut lexer = Lexer::new(&dialect, input);
     let tokens = lexer.tokenize()?;
     println!("MyDialect1: {:#?}", tokens);
 
-    let mut lexer = Lexer::new(input, MyDialect2::default());
+    let dialect = MyDialect2::default();
+    let mut lexer = Lexer::new(&dialect, input);
     let tokens = lexer.tokenize()?;
     println!("MyDialect2: {:#?}", tokens);
 
