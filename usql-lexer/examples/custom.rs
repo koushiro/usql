@@ -2,16 +2,17 @@ use usql_core::{ansi::AnsiKeyword, CustomDialect, Dialect, DialectLexerConf, Dia
 use usql_lexer::{Lexer, LexerError};
 
 pub type MyDialect1 = CustomDialect<AnsiKeyword, MyDialect1LexerConfig, MyDialectParserConfig>;
+pub type MyDialect2 = CustomDialect<AnsiKeyword, MyDialect2LexerConfig, MyDialectParserConfig>;
 
 #[derive(Clone, Debug, Default)]
-pub struct MyDialect2 {
-    lexer_conf: MyDialect2LexerConfig,
+pub struct MyDialect3 {
+    lexer_conf: MyDialect3LexerConfig,
     parser_conf: MyDialectParserConfig,
 }
 
-impl Dialect for MyDialect2 {
+impl Dialect for MyDialect3 {
     type Keyword = AnsiKeyword;
-    type LexerConf = MyDialect2LexerConfig;
+    type LexerConf = MyDialect3LexerConfig;
     type ParserConf = MyDialectParserConfig;
 
     fn lexer_conf(&self) -> &Self::LexerConf {
@@ -25,21 +26,25 @@ impl Dialect for MyDialect2 {
 
 #[derive(Clone, Debug, Default)]
 pub struct MyDialect1LexerConfig;
-impl DialectLexerConf for MyDialect1LexerConfig {
-    fn ignore_whitespace(&self) -> bool {
-        true
-    }
-}
+impl DialectLexerConf for MyDialect1LexerConfig {}
 
 #[derive(Clone, Debug, Default)]
 pub struct MyDialect2LexerConfig;
 impl DialectLexerConf for MyDialect2LexerConfig {
+    fn ignore_comment(&self) -> bool {
+        false
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct MyDialect3LexerConfig;
+impl DialectLexerConf for MyDialect3LexerConfig {
     fn ignore_whitespace(&self) -> bool {
-        true
+        false
     }
 
     fn ignore_comment(&self) -> bool {
-        true
+        false
     }
 }
 
@@ -48,10 +53,10 @@ pub struct MyDialectParserConfig;
 impl DialectParserConf for MyDialectParserConfig {}
 
 fn main() -> Result<(), LexerError> {
-    let input = r#"
-        --this is single line comment
-        SELECT * FROM a WHERE id = 1
-    "#;
+    let input = "\
+    --this is single line comment\n\
+    SELECT * FROM a WHERE id = 1\
+    ";
 
     let dialect = MyDialect1::default();
     let mut lexer = Lexer::new(&dialect, input);
@@ -62,6 +67,11 @@ fn main() -> Result<(), LexerError> {
     let mut lexer = Lexer::new(&dialect, input);
     let tokens = lexer.tokenize()?;
     println!("MyDialect2: {:#?}", tokens);
+
+    let dialect = MyDialect3::default();
+    let mut lexer = Lexer::new(&dialect, input);
+    let tokens = lexer.tokenize()?;
+    println!("MyDialect3: {:#?}", tokens);
 
     Ok(())
 }
