@@ -32,4 +32,65 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all
+          args: --all-features
+
+  no-std:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v2
+
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: thumbv6m-none-eabi
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --no-default-features --features 'ansi,mysql,postgres,sqlite' --target thumbv6m-none-eabi
+
+  msrv:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v2
+
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.56.0
+          override: true
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features
+
+  check-benchmark:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v2
+
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Check
+        uses: actions-rs/cargo@v1
+        with:
+          command: bench
+          args: --manifest-path usql-bench/Cargo.toml check

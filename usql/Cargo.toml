@@ -12,7 +12,7 @@ repository = "https://github.com/koushiro/usql"
 description = "Universal SQL Lexer and Parser"
 
 [features]
-default = ["std"]
+default = ["std", "ansi"]
 std = []
 serde = [
   "usql-ast/serde",
