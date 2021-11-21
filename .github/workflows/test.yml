@@ -32,7 +32,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all-features
+          args: --workspace --all-features
 
   no-std:
     runs-on: ubuntu-latest
@@ -53,7 +53,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --no-default-features --features 'ansi,mysql,postgres,sqlite' --target thumbv6m-none-eabi
+          args: --workspace --no-default-features --features 'ansi,mysql,postgres,sqlite' --target thumbv6m-none-eabi
 
   msrv:
     runs-on: ubuntu-latest
@@ -73,7 +73,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all-features
+          args: --workspace --all-features
 
   check-benchmark:
     runs-on: ubuntu-latest
