@@ -17,34 +17,34 @@ fn tokenize(c: &mut Criterion) {
         ";
 
     group.bench_function("sqlparser 1", |b| {
+        use sqlparser::tokenizer::Tokenizer;
         let dialect = sqlparser::dialect::AnsiDialect {};
         b.iter(|| {
-            let mut tokenizer = sqlparser::tokenizer::Tokenizer::new(&dialect, input1);
-            let _tokens = black_box(tokenizer.tokenize().unwrap());
+            let _tokens = black_box(Tokenizer::new(&dialect, input1).tokenize().unwrap());
         });
     });
 
     group.bench_function("usql-lexer 1", |b| {
+        use usql::lexer::Lexer;
         let dialect = usql::core::ansi::AnsiDialect::default();
         b.iter(|| {
-            let mut tokenizer = usql::lexer::Lexer::new(&dialect, input1);
-            let _tokens = black_box(tokenizer.tokenize().unwrap());
+            let _tokens = black_box(Lexer::new(&dialect, input1).tokenize().unwrap());
         });
     });
 
     group.bench_function("sqlparser 2", |b| {
+        use sqlparser::tokenizer::Tokenizer;
         let dialect = sqlparser::dialect::AnsiDialect {};
         b.iter(|| {
-            let mut tokenizer = sqlparser::tokenizer::Tokenizer::new(&dialect, input2);
-            let _tokens = black_box(tokenizer.tokenize().unwrap());
+            let _tokens = black_box(Tokenizer::new(&dialect, input2).tokenize().unwrap());
         });
     });
 
     group.bench_function("usql-lexer 2", |b| {
+        use usql::lexer::Lexer;
         let dialect = usql::core::ansi::AnsiDialect::default();
         b.iter(|| {
-            let mut tokenizer = usql::lexer::Lexer::new(&dialect, input2);
-            let _tokens = black_box(tokenizer.tokenize().unwrap());
+            let _tokens = black_box(Lexer::new(&dialect, input2).tokenize().unwrap());
         });
     });
 }

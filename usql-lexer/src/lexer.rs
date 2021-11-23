@@ -31,13 +31,8 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         }
     }
 
-    /// Returns the current location scanned by lexer.
-    pub fn location(&self) -> Location {
-        self.location
-    }
-
     /// Tokenizes the statement and produce a sequence of tokens.
-    pub fn tokenize(&mut self) -> Result<Vec<Token<D::Keyword>>, LexerError> {
+    pub fn tokenize(mut self) -> Result<Vec<Token<D::Keyword>>, LexerError> {
         let mut tokens = vec![];
         while let Some(token) = self.next_token()? {
             if self.dialect.lexer_conf().ignore_whitespace() && token.is_whitespace() {
@@ -380,8 +375,7 @@ mod tests {
     macro_rules! tokenize {
         ($input:expr, $expected:expr) => {{
             let dialect = ::usql_core::ansi::AnsiDialect::default();
-            let mut lexer = $crate::Lexer::new(&dialect, $input);
-            let got = lexer.tokenize();
+            let got = $crate::Lexer::new(&dialect, $input).tokenize();
             // println!("------------------------------");
             // println!("got = {:?}", $got);
             // println!("expected = {:?}", $expected);
@@ -389,8 +383,7 @@ mod tests {
             assert_eq!(got, $expected);
         }};
         ($input:expr, $expected:expr, $dialect:expr) => {{
-            let mut lexer = $crate::Lexer::new($dialect, $input);
-            let got = lexer.tokenize();
+            let got = $crate::Lexer::new($dialect, $input).tokenize();
             // println!("------------------------------");
             // println!("got = {:?}", $got);
             // println!("expected = {:?}", $expected);
