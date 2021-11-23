@@ -25,9 +25,9 @@ fn tokenize(c: &mut Criterion) {
     });
 
     group.bench_function("usql-lexer 1", |b| {
-        let dialect = usql_core::ansi::AnsiDialect::default();
+        let dialect = usql::core::ansi::AnsiDialect::default();
         b.iter(|| {
-            let mut tokenizer = usql_lexer::Lexer::new(&dialect, input1);
+            let mut tokenizer = usql::lexer::Lexer::new(&dialect, input1);
             let _tokens = black_box(tokenizer.tokenize().unwrap());
         });
     });
@@ -41,9 +41,9 @@ fn tokenize(c: &mut Criterion) {
     });
 
     group.bench_function("usql-lexer 2", |b| {
-        let dialect = usql_core::ansi::AnsiDialect::default();
+        let dialect = usql::core::ansi::AnsiDialect::default();
         b.iter(|| {
-            let mut tokenizer = usql_lexer::Lexer::new(&dialect, input2);
+            let mut tokenizer = usql::lexer::Lexer::new(&dialect, input2);
             let _tokens = black_box(tokenizer.tokenize().unwrap());
         });
     });

@@ -40,15 +40,11 @@ impl<'a, D: Dialect> Lexer<'a, D> {
     pub fn tokenize(&mut self) -> Result<Vec<Token<D::Keyword>>, LexerError> {
         let mut tokens = vec![];
         while let Some(token) = self.next_token()? {
-            if self.dialect.lexer_conf().ignore_whitespace() {
-                if let Token::Whitespace(_) = token {
-                    continue;
-                }
+            if self.dialect.lexer_conf().ignore_whitespace() && token.is_whitespace() {
+                continue;
             }
-            if self.dialect.lexer_conf().ignore_comment() {
-                if let Token::Comment(_) = token {
-                    continue;
-                }
+            if self.dialect.lexer_conf().ignore_comment() && token.is_comment() {
+                continue;
             }
             tokens.push(token);
         }

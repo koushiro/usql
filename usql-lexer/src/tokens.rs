@@ -184,6 +184,16 @@ impl<K: KeywordDef> Token<K> {
         let value = value.into();
         Self::Ident(Ident { value, quote })
     }
+
+    /// Checks if the token is whitespace.
+    pub fn is_whitespace(&self) -> bool {
+        matches!(self, Token::Whitespace(_))
+    }
+
+    /// Checks if the token is comment.
+    pub fn is_comment(&self) -> bool {
+        matches!(self, Token::Comment(_))
+    }
 }
 
 /// Whitespace token
