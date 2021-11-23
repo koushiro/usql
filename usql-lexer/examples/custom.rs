@@ -54,13 +54,11 @@ fn main() -> Result<(), LexerError> {
     "#;
 
     let dialect = MyDialect1::default();
-    let mut lexer = Lexer::new(&dialect, input);
-    let tokens = lexer.tokenize()?;
+    let tokens = Lexer::new(&dialect, input).tokenize()?;
     println!("MyDialect1: {:#?}", tokens);
 
     let dialect = MyDialect2::default();
-    let mut lexer = Lexer::new(&dialect, input);
-    let tokens = lexer.tokenize()?;
+    let tokens = Lexer::new(&dialect, input).tokenize()?;
     println!("MyDialect2: {:#?}", tokens);
 
     Ok(())

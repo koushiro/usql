@@ -67,7 +67,7 @@ pub trait Dialect: Debug {
 /// The marker for a keyword definition.
 pub trait KeywordDef
 where
-    Self: Clone + Debug + Display + 'static,
+    Self: Clone + PartialEq + Debug + Display + 'static,
 {
     /// All sorted keywords for the definition.
     const KEYWORDS: &'static [Self];
