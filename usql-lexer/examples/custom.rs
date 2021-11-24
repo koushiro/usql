@@ -1,7 +1,15 @@
-use usql_core::{ansi::AnsiKeyword, CustomDialect, Dialect, DialectLexerConf, DialectParserConf};
+use usql_core::{define_keyword, CustomDialect, Dialect, DialectLexerConf, DialectParserConf};
 use usql_lexer::{Lexer, LexerError};
 
-pub type MyDialect1 = CustomDialect<AnsiKeyword, MyDialect1LexerConfig, MyDialectParserConfig>;
+pub type MyDialect1 = CustomDialect<MyKeyword, MyDialect1LexerConfig, MyDialectParserConfig>;
+
+define_keyword! {
+    MyKeyword => {
+        FROM,
+        SELECT,
+        WHERE
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct MyDialect2 {
@@ -10,7 +18,7 @@ pub struct MyDialect2 {
 }
 
 impl Dialect for MyDialect2 {
-    type Keyword = AnsiKeyword;
+    type Keyword = MyKeyword;
     type LexerConf = MyDialect2LexerConfig;
     type ParserConf = MyDialectParserConfig;
 

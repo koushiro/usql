@@ -14,11 +14,7 @@ description = "Universal SQL Lexer and Parser"
 [features]
 default = ["std", "ansi"]
 std = []
-serde = [
-  "usql-ast/serde",
-  "usql-core/serde",
-  "usql-lexer/serde",
-]
+serde = ["usql-ast/serde", "usql-core/serde"]
 
 ansi = ["usql-ast/ansi", "usql-core/ansi"]
 mysql = ["usql-ast/mysql", "usql-core/mysql"]

@@ -1,5 +1,5 @@
 define_keyword! {
-    /// MySQL keywords.
+    /// MySQL reserved keywords.
     ///
     /// See [MySQL] documentation for details.
     ///

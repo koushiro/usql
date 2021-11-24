@@ -32,7 +32,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
     }
 
     /// Tokenizes the statement and produce a sequence of tokens.
-    pub fn tokenize(mut self) -> Result<Vec<Token<D::Keyword>>, LexerError> {
+    pub fn tokenize(mut self) -> Result<Vec<Token>, LexerError> {
         let mut tokens = vec![];
         while let Some(token) = self.next_token()? {
             if self.dialect.lexer_conf().ignore_whitespace() && token.is_whitespace() {
@@ -46,7 +46,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         Ok(tokens)
     }
 
-    fn next_token(&mut self) -> Result<Option<Token<D::Keyword>>, LexerError> {
+    fn next_token(&mut self) -> Result<Option<Token>, LexerError> {
         match self.iter.peek() {
             Some(&ch) => match ch {
                 // whitespace
@@ -62,9 +62,9 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                         let s = self.tokenize_string_literal('\'')?;
                         Ok(Some(Token::NationalString(s)))
                     } else {
-                        // regular identifier starting with an "N" or "n"
+                        // regular identifier(maybe a non-reserved keyword) starting with an "N" or "n"
                         let ident = self.tokenize_ident(n);
-                        Ok(Some(Token::make(ident, None)))
+                        Ok(Some(Token::word::<D::Keyword, _>(ident, None)))
                     }
                 }
                 // hex string literal
@@ -78,9 +78,9 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                         let s = self.tokenize_string_literal('\'')?;
                         Ok(Some(Token::HexString(s)))
                     } else {
-                        // regular identifier starting with an "X" or "x"
+                        // regular identifier(maybe a non-reserved keyword) starting with an "X" or "x"
                         let ident = self.tokenize_ident(x);
-                        Ok(Some(Token::make(ident, None)))
+                        Ok(Some(Token::word::<D::Keyword, _>(ident, None)))
                     }
                 }
                 // bit string literal
@@ -94,9 +94,9 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                         let s = self.tokenize_string_literal('\'')?;
                         Ok(Some(Token::BitString(s)))
                     } else {
-                        // regular identifier starting with an "B" or "b"
+                        // regular identifier(maybe a non-reserved keyword) starting with an "B" or "b"
                         let ident = self.tokenize_ident(b);
-                        Ok(Some(Token::make(ident, None)))
+                        Ok(Some(Token::word::<D::Keyword, _>(ident, None)))
                     }
                 }
                 // string literal
@@ -114,13 +114,13 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                 {
                     self.next_char(); // consume the open quotation mark of delimited identifier
                     let ident = self.tokenize_delimited_ident(quote)?;
-                    Ok(Some(Token::make(ident, Some(quote))))
+                    Ok(Some(Token::word::<D::Keyword, _>(ident, Some(quote))))
                 }
-                // identifier or keyword
+                // identifier
                 ch if self.dialect.lexer_conf().is_identifier_start(ch) => {
                     self.next_char(); // consume the identifier start character
                     let ident = self.tokenize_ident(ch);
-                    Ok(Some(Token::make(ident, None)))
+                    Ok(Some(Token::word::<D::Keyword, _>(ident, None)))
                 }
                 // number or period
                 ch if ch.is_ascii_digit() || ch == '.' => self.tokenize_number(),
@@ -192,7 +192,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         ident
     }
 
-    fn tokenize_number(&mut self) -> Result<Option<Token<D::Keyword>>, LexerError> {
+    fn tokenize_number(&mut self) -> Result<Option<Token>, LexerError> {
         let mut s = self.next_while(|ch| ch.is_ascii_digit());
 
         // We don't support 0xvalue syntax, which is a MySQL/MariaDB extension for hex hybrids
@@ -211,7 +211,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         Ok(Some(Token::Number(s)))
     }
 
-    fn tokenize_symbol(&mut self) -> Result<Option<Token<D::Keyword>>, LexerError> {
+    fn tokenize_symbol(&mut self) -> Result<Option<Token>, LexerError> {
         let token = self.next_if_token(|ch| {
             Some(match ch {
                 ',' => Token::Comma,
@@ -318,10 +318,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
     }
 
     /// Grabs the next single-character token if the tokenizer function returns one
-    fn next_if_token<F: Fn(char) -> Option<Token<D::Keyword>>>(
-        &mut self,
-        tokenizer: F,
-    ) -> Option<Token<D::Keyword>> {
+    fn next_if_token<F: Fn(char) -> Option<Token>>(&mut self, tokenizer: F) -> Option<Token> {
         let token = self.iter.peek().and_then(|&c| tokenizer(c))?;
         self.next_char();
         Some(token)
@@ -377,16 +374,16 @@ mod tests {
             let dialect = ::usql_core::ansi::AnsiDialect::default();
             let got = $crate::Lexer::new(&dialect, $input).tokenize();
             // println!("------------------------------");
-            // println!("got = {:?}", $got);
-            // println!("expected = {:?}", $expected);
+            // println!("got = {:?}", got);
+            // println!("expected = {:?}", $expected as Result<Vec<Token>, LexerError>);
             // println!("------------------------------");
             assert_eq!(got, $expected);
         }};
         ($input:expr, $expected:expr, $dialect:expr) => {{
             let got = $crate::Lexer::new($dialect, $input).tokenize();
             // println!("------------------------------");
-            // println!("got = {:?}", $got);
-            // println!("expected = {:?}", $expected);
+            // println!("got = {:?}", got);
+            // println!("expected = {:?}", $expected  as Result<Vec<Token>, LexerError>);
             // println!("------------------------------");
             assert_eq!(got, $expected);
         }};
@@ -394,18 +391,19 @@ mod tests {
 
     #[test]
     fn tokenize_whitespace() {
+        use usql_core::ansi::AnsiKeyword;
         tokenize!(
             " line1\nline2\t\rline3\r\nline4\r",
             Ok(vec![
                 Token::Whitespace(Whitespace::Space),
-                Token::ident("line1", None),
+                Token::word::<AnsiKeyword, _>("line1", None),
                 Token::Whitespace(Whitespace::Newline),
-                Token::ident("line2", None),
+                Token::word::<AnsiKeyword, _>("line2", None),
                 Token::Whitespace(Whitespace::Tab),
                 Token::Whitespace(Whitespace::Newline),
-                Token::ident("line3", None),
+                Token::word::<AnsiKeyword, _>("line3", None),
                 Token::Whitespace(Whitespace::Newline),
-                Token::ident("line4", None),
+                Token::word::<AnsiKeyword, _>("line4", None),
                 Token::Whitespace(Whitespace::Newline),
             ])
         );
@@ -523,6 +521,8 @@ mod tests {
 
     #[test]
     fn tokenize_string_literal() {
+        use usql_core::ansi::AnsiKeyword;
+
         tokenize!("'hello'", Ok(vec![Token::String("hello".into())]));
         tokenize!("'hello'", Ok(vec![Token::String("hello".into())]));
 
@@ -551,7 +551,7 @@ mod tests {
                 Token::Char('ط'),
                 Token::Char('ف'),
                 Token::Char('ى'),
-                Token::ident("h", None),
+                Token::word::<AnsiKeyword, _>("h", None),
             ])
         );
 
@@ -568,7 +568,11 @@ mod tests {
 
     #[test]
     fn tokenize_delimited_ident() {
-        tokenize!("\"foo\"", Ok(vec![Token::ident("foo", Some('\"'))]));
+        use usql_core::ansi::AnsiKeyword;
+        tokenize!(
+            "\"foo\"",
+            Ok(vec![Token::word::<AnsiKeyword, _>("foo", Some('\"'))])
+        );
 
         // mismatch quotes
         tokenize!(
@@ -580,10 +584,11 @@ mod tests {
 
     #[test]
     fn tokenize_string_concat() {
+        use usql_core::ansi::AnsiKeyword;
         tokenize!(
             "SELECT 'a' || 'b'",
             Ok(vec![
-                Token::keyword("SELECT").unwrap(),
+                Token::keyword::<AnsiKeyword, _>("SELECT").unwrap(),
                 Token::Whitespace(Whitespace::Space),
                 Token::String("a".into()),
                 Token::Whitespace(Whitespace::Space),
@@ -596,58 +601,60 @@ mod tests {
 
     #[test]
     fn tokenize_bitwise_op() {
+        use usql_core::ansi::AnsiKeyword;
         tokenize!(
             "SELECT one | two ^ three",
             Ok(vec![
-                Token::keyword("SELECT").unwrap(),
+                Token::keyword::<AnsiKeyword, _>("SELECT").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("one").unwrap(),
+                Token::word::<AnsiKeyword, _>("one", None),
                 Token::Whitespace(Whitespace::Space),
                 Token::Pipe,
                 Token::Whitespace(Whitespace::Space),
-                Token::ident("two", None),
+                Token::word::<AnsiKeyword, _>("two", None),
                 Token::Whitespace(Whitespace::Space),
                 Token::Caret,
                 Token::Whitespace(Whitespace::Space),
-                Token::ident("three", None),
+                Token::word::<AnsiKeyword, _>("three", None),
             ])
         )
     }
 
     #[test]
     fn tokenize_mysql_logical_xor() {
-        let dialect = usql_core::mysql::MysqlDialect::default();
+        use usql_core::mysql::{MysqlDialect, MysqlKeyword};
+        let dialect = MysqlDialect::default();
         tokenize!(
             "SELECT true XOR true, false XOR false, true XOR false, false XOR true",
             Ok(vec![
-                Token::keyword("SELECT").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("SELECT").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("true").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("true").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("XOR").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("XOR").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("true").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("true").unwrap(),
                 Token::Comma,
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("false").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("false").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("XOR").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("XOR").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("false").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("false").unwrap(),
                 Token::Comma,
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("true").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("true").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("XOR").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("XOR").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("false").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("false").unwrap(),
                 Token::Comma,
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("false").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("false").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("XOR").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("XOR").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("true").unwrap(),
+                Token::keyword::<MysqlKeyword, _>("true").unwrap(),
             ]),
             &dialect
         );
@@ -655,20 +662,21 @@ mod tests {
 
     #[test]
     fn tokenize_simple_select() {
+        use usql_core::ansi::AnsiKeyword;
         tokenize!(
             "SELECT * FROM customer WHERE id = 1",
             Ok(vec![
-                Token::keyword("SELECT").unwrap(),
+                Token::keyword::<AnsiKeyword, _>("SELECT").unwrap(),
                 Token::Whitespace(Whitespace::Space),
                 Token::Asterisk,
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("FROM").unwrap(),
+                Token::keyword::<AnsiKeyword, _>("FROM").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::ident("customer", None),
+                Token::word::<AnsiKeyword, _>("customer", None),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("WHERE").unwrap(),
+                Token::keyword::<AnsiKeyword, _>("WHERE").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::ident("id", None),
+                Token::word::<AnsiKeyword, _>("id", None),
                 Token::Whitespace(Whitespace::Space),
                 Token::Equal,
                 Token::Whitespace(Whitespace::Space),
@@ -679,17 +687,17 @@ mod tests {
         tokenize!(
             "SELECT * FROM customer WHERE salary != 'Not Provided'",
             Ok(vec![
-                Token::keyword("SELECT").unwrap(),
+                Token::keyword::<AnsiKeyword, _>("SELECT").unwrap(),
                 Token::Whitespace(Whitespace::Space),
                 Token::Asterisk,
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("FROM").unwrap(),
+                Token::keyword::<AnsiKeyword, _>("FROM").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::ident("customer", None),
+                Token::word::<AnsiKeyword, _>("customer", None),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("WHERE").unwrap(),
+                Token::keyword::<AnsiKeyword, _>("WHERE").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::ident("salary", None),
+                Token::word::<AnsiKeyword, _>("salary", None),
                 Token::Whitespace(Whitespace::Space),
                 Token::NotEqual,
                 Token::Whitespace(Whitespace::Space),
@@ -703,20 +711,20 @@ mod tests {
             Ok(vec![
                 Token::Whitespace(Whitespace::Newline),
                 Token::Whitespace(Whitespace::Newline),
-                Token::keyword("SELECT").unwrap(),
+                Token::keyword::<AnsiKeyword, _>("SELECT").unwrap(),
                 Token::Whitespace(Whitespace::Space),
                 Token::Asterisk,
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("FROM").unwrap(),
+                Token::keyword::<AnsiKeyword, _>("FROM").unwrap(),
                 Token::Whitespace(Whitespace::Space),
-                Token::keyword("table").unwrap(),
+                Token::keyword::<AnsiKeyword, _>("table").unwrap(),
                 Token::Whitespace(Whitespace::Tab),
                 Token::Char('م'),
                 Token::Char('ص'),
                 Token::Char('ط'),
                 Token::Char('ف'),
                 Token::Char('ى'),
-                Token::ident("h", None),
+                Token::word::<AnsiKeyword, _>("h", None),
             ])
         )
     }

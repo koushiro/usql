@@ -1,5 +1,5 @@
 define_keyword! {
-    /// PostgreSQL keywords.
+    /// PostgreSQL reserved keywords.
     ///
     /// See [PostgreSQL] documentation for details.
     ///

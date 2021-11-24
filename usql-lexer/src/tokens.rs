@@ -2,12 +2,12 @@
 use alloc::{string::String, vec::Vec};
 use core::fmt;
 
-use usql_core::KeywordDef;
+use usql_core::{Keyword, KeywordDef};
 
 /// SQL token
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum Token<K> {
+pub enum Token {
     /// Whitespace (space, newline, tab).
     Whitespace(Whitespace),
     /// Single-line comment or multi-line comment.
@@ -25,10 +25,10 @@ pub enum Token<K> {
     /// Bit string literal: i.e.: B'101010'. (Not ANSI SQL)
     BitString(String),
 
-    /// An optionally quoted SQL identifier.
-    Ident(Ident),
-    /// A keyword.
-    Keyword(K, &'static str),
+    /// A keyword (like SELECT) or an optionally quoted SQL identifier.
+    /// Non-reserved keywords are permitted as identifiers without quoting.
+    /// Reserved words are permitted as identifiers if you quote them.
+    Word(Word),
 
     /// Period `.`
     Period,
@@ -110,18 +110,17 @@ pub enum Token<K> {
     Char(char),
 }
 
-impl<K: fmt::Display> fmt::Display for Token<K> {
+impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Token::Whitespace(space) => write!(f, "{}", space),
             Token::Comment(comment) => write!(f, "{}", comment),
-            Token::Number(n) => write!(f, "{}", n),
-            Token::String(s) => write!(f, "{}", s),
+            Token::Number(n) => f.write_str(n),
+            Token::String(s) => f.write_str(s),
             Token::NationalString(s) => write!(f, "M'{}'", s),
             Token::BitString(s) => write!(f, "B'{}'", s),
             Token::HexString(s) => write!(f, "X'{}'", s),
-            Token::Ident(ident) => write!(f, "{}", ident),
-            Token::Keyword(keyword, _) => write!(f, "{}", keyword),
+            Token::Word(word) => write!(f, "{}", word),
             Token::Comma => f.write_str(","),
             Token::SemiColon => f.write_str(";"),
             Token::Period => f.write_str("."),
@@ -162,27 +161,40 @@ impl<K: fmt::Display> fmt::Display for Token<K> {
     }
 }
 
-impl<K: KeywordDef> Token<K> {
-    /// Creates a SQL keyword or an optionally quoted SQL identifier.
-    pub fn make(value: impl Into<String>, quote: Option<char>) -> Self {
-        let value = value.into();
-        Self::keyword(value.as_str()).unwrap_or_else(|| Self::ident(value, quote))
-    }
-
+impl Token {
     /// Creates a SQL keyword.
-    pub fn keyword(keyword: impl AsRef<str>) -> Option<Self> {
-        let keyword = keyword.as_ref();
-        let keyword_uppercase = keyword.to_uppercase();
-        K::KEYWORD_STRINGS
+    // https://github.com/rust-lang/rust/issues/83701
+    pub fn keyword<K: KeywordDef, W: Into<String>>(value: W) -> Option<Self> {
+        let value = value.into();
+        let keyword_uppercase = value.to_uppercase();
+        let keyword = K::KEYWORDS_STRING
             .binary_search(&keyword_uppercase.as_str())
-            .map(|x| Self::Keyword(K::KEYWORDS[x].clone(), K::KEYWORD_STRINGS[x]))
-            .ok()
+            .map(|x| K::KEYWORDS_INDEX[x])
+            .ok();
+        keyword.map(|kw| Self::Word(Word {
+            keyword: Some(kw),
+            value,
+            quote: None,
+        }))
     }
 
-    /// Creates an optionally quoted SQL identifier.
-    pub fn ident(value: impl Into<String>, quote: Option<char>) -> Self {
+    /// Creates a SQL keyword or an optionally quoted SQL identifier.
+    // https://github.com/rust-lang/rust/issues/83701
+    pub fn word<K: KeywordDef, W: Into<String>>(value: W, quote: Option<char>) -> Self {
         let value = value.into();
-        Self::Ident(Ident { value, quote })
+        Self::Word(Word {
+            keyword: if quote.is_none() {
+                let keyword_uppercase = value.to_uppercase();
+                K::KEYWORDS_STRING
+                    .binary_search(&keyword_uppercase.as_str())
+                    .map(|x| K::KEYWORDS_INDEX[x])
+                    .ok()
+            } else {
+                None
+            },
+            value,
+            quote,
+        })
     }
 
     /// Checks if the token is whitespace.
@@ -250,10 +262,13 @@ impl fmt::Display for Comment {
     }
 }
 
-/// An optionally quoted SQL identifier
+/// A keyword (like SELECT) or an optionally quoted SQL identifier
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Ident {
+pub struct Word {
+    /// If the word was not quoted and it matched one of the known keywords,
+    /// this will have one of the reserved keyword, otherwise empty.
+    pub keyword: Option<Keyword>,
     /// The value of the token, without the enclosing quotes, and with the
     /// escape sequences (if any) processed.
     pub value: String,
@@ -264,7 +279,7 @@ pub struct Ident {
     pub quote: Option<char>,
 }
 
-impl fmt::Display for Ident {
+impl fmt::Display for Word {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.quote {
             None => f.write_str(&self.value),
