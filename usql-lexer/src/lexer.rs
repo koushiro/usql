@@ -62,7 +62,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                         let s = self.tokenize_string_literal('\'')?;
                         Ok(Some(Token::NationalString(s)))
                     } else {
-                        // regular identifier(maybe a non-reserved keyword) starting with an "N" or "n"
+                        // regular identifier starting with an "N" or "n"
                         let ident = self.tokenize_ident(n);
                         Ok(Some(Token::word::<D::Keyword, _>(ident, None)))
                     }
@@ -78,7 +78,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                         let s = self.tokenize_string_literal('\'')?;
                         Ok(Some(Token::HexString(s)))
                     } else {
-                        // regular identifier(maybe a non-reserved keyword) starting with an "X" or "x"
+                        // regular identifier starting with an "X" or "x"
                         let ident = self.tokenize_ident(x);
                         Ok(Some(Token::word::<D::Keyword, _>(ident, None)))
                     }
@@ -94,7 +94,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                         let s = self.tokenize_string_literal('\'')?;
                         Ok(Some(Token::BitString(s)))
                     } else {
-                        // regular identifier(maybe a non-reserved keyword) starting with an "B" or "b"
+                        // regular identifier starting with an "B" or "b"
                         let ident = self.tokenize_ident(b);
                         Ok(Some(Token::word::<D::Keyword, _>(ident, None)))
                     }
@@ -116,7 +116,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                     let ident = self.tokenize_delimited_ident(quote)?;
                     Ok(Some(Token::word::<D::Keyword, _>(ident, Some(quote))))
                 }
-                // identifier
+                // identifier or keyword
                 ch if self.dialect.lexer_conf().is_identifier_start(ch) => {
                     self.next_char(); // consume the identifier start character
                     let ident = self.tokenize_ident(ch);
@@ -569,6 +569,7 @@ mod tests {
     #[test]
     fn tokenize_delimited_ident() {
         use usql_core::ansi::AnsiKeyword;
+
         tokenize!(
             "\"foo\"",
             Ok(vec![Token::word::<AnsiKeyword, _>("foo", Some('\"'))])
@@ -663,6 +664,7 @@ mod tests {
     #[test]
     fn tokenize_simple_select() {
         use usql_core::ansi::AnsiKeyword;
+        
         tokenize!(
             "SELECT * FROM customer WHERE id = 1",
             Ok(vec![
