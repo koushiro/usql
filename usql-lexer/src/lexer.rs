@@ -664,7 +664,7 @@ mod tests {
     #[test]
     fn tokenize_simple_select() {
         use usql_core::ansi::AnsiKeyword;
-        
+
         tokenize!(
             "SELECT * FROM customer WHERE id = 1",
             Ok(vec![

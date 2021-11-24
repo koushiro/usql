@@ -171,11 +171,13 @@ impl Token {
             .binary_search(&keyword_uppercase.as_str())
             .map(|x| K::KEYWORDS_INDEX[x])
             .ok();
-        keyword.map(|kw| Self::Word(Word {
-            keyword: Some(kw),
-            value,
-            quote: None,
-        }))
+        keyword.map(|kw| {
+            Self::Word(Word {
+                keyword: Some(kw),
+                value,
+                quote: None,
+            })
+        })
     }
 
     /// Creates a SQL keyword or an optionally quoted SQL identifier.

@@ -1,4 +1,4 @@
-use usql_core::{define_keyword, DialectLexerConf, DialectParserConf, CustomDialect};
+use usql_core::{define_keyword, CustomDialect, DialectLexerConf, DialectParserConf};
 
 define_keyword! {
     MyKeyword => {
