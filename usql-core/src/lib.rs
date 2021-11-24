@@ -12,6 +12,7 @@ extern crate alloc;
 #[macro_use]
 mod macros;
 mod dialect;
+mod keywords;
 
 /// ANSI SQL-2016.
 #[cfg(feature = "ansi")]
@@ -26,4 +27,7 @@ pub mod postgres;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
 
-pub use self::dialect::{CustomDialect, Dialect, DialectLexerConf, DialectParserConf, KeywordDef};
+pub use self::{
+    dialect::{CustomDialect, Dialect, DialectLexerConf, DialectParserConf},
+    keywords::{Keyword, KeywordDef},
+};

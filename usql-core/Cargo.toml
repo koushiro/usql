@@ -12,7 +12,7 @@ repository = "https://github.com/koushiro/usql"
 description = "Unverisal SQL core types and traits"
 
 [features]
-default = ["std", "ansi"]
+default = ["std"]
 std = []
 
 ansi = []
@@ -22,5 +22,3 @@ sqlite = []
 
 [dependencies]
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
-
-[dev-dependencies]

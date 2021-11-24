@@ -12,10 +12,48 @@ macro_rules! kw_def {
     };
 }
 
-/// Expands to a list of `kw_def!()` invocations for each keyword
-/// and implement the `Display` and the `KeywordDef` traits for the list.
+/// Expands to a list of `kw_def!()` invocations for each reserved keyword
+/// and defines an ALL_KEYWORDS array of the defined constants.
 ///
-/// **NOTE**: All keywords should be sorted to be able to match using binary search.
+/// **NOTE**: All reserved keywords should be sorted to be able to match using
+/// binary search.
+macro_rules! define_all_keywords {
+    (
+        $(
+            $keyword:ident $(= $string_keyword:expr)?
+        ),*
+    ) => {
+        /// All reserved keywords
+        #[doc(hidden)]
+        #[allow(non_camel_case_types)]
+        #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+        pub enum Keyword {
+            $($keyword),*
+        }
+
+        impl ::core::fmt::Display for Keyword {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                ::core::fmt::Debug::fmt(self, f)
+            }
+        }
+
+        // /// All reserved keywords
+        // pub const ALL_KEYWORDS_INDEX: &[Keyword] = &[
+        //     $(Keyword::$keyword),*
+        // ];
+        //
+        // $( $crate::kw_def!($keyword $(= $string_keyword)?); )*
+        // /// All reserved keywords string.
+        // pub const ALL_KEYWORDS_STRING: &[&str] = &[
+        //     $($keyword),*
+        // ];
+    }
+}
+
+/// Define a list of reserved keywords of the dialect.
+///
+/// **NOTE**: All reserved keywords should be sorted to be able to match using
+/// binary search.
 #[macro_export]
 macro_rules! define_keyword {
     (
@@ -27,29 +65,23 @@ macro_rules! define_keyword {
         }
     ) => {
         $(#[$doc])*
-        #[doc(hidden)]
-        #[allow(non_camel_case_types)]
         #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-        pub enum $name {
-            $($keyword),*
-        }
+        pub struct $name;
 
-        impl ::core::fmt::Display for $name {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                ::core::fmt::Debug::fmt(self, f)
+        mod __private {
+            use super::$name;
+
+            $( $crate::kw_def!($keyword $(= $string_keyword)?); )*
+
+            impl $crate::KeywordDef for $name {
+                const KEYWORDS_INDEX: &'static [$crate::Keyword] = &[
+                    $($crate::Keyword::$keyword),*
+                ];
+
+                const KEYWORDS_STRING: &'static [&'static str] = &[
+                    $($keyword),*
+                ];
             }
-        }
-
-        $( $crate::kw_def!($keyword $(= $string_keyword)?); )*
-
-        impl $crate::KeywordDef for $name {
-            const KEYWORDS: &'static [Self] = &[
-                $(Self::$keyword),*
-            ];
-            const KEYWORD_STRINGS: &'static [&'static str] = &[
-                $($keyword),*
-            ];
         }
     }
 }

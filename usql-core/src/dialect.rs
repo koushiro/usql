@@ -1,7 +1,6 @@
-use core::{
-    fmt::{Debug, Display},
-    marker::PhantomData,
-};
+use core::{fmt::Debug, marker::PhantomData};
+
+use crate::keywords::KeywordDef;
 
 /// A simple customizable SQL dialect structure.
 #[derive(Clone, Debug)]
@@ -62,18 +61,6 @@ pub trait Dialect: Debug {
 
     /// Returns the parser configuration.
     fn parser_conf(&self) -> &Self::ParserConf;
-}
-
-/// The marker for a keyword definition.
-pub trait KeywordDef
-where
-    Self: Clone + PartialEq + Debug + Display + 'static,
-{
-    /// All sorted keywords for the definition.
-    const KEYWORDS: &'static [Self];
-
-    /// All sorted keyword strings for the definition.
-    const KEYWORD_STRINGS: &'static [&'static str];
 }
 
 /// The configuration of the lexer part of dialect.

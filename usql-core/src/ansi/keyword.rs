@@ -1,9 +1,9 @@
 define_keyword! {
-    /// Ansi SQL-2016 keywords.
+    /// Ansi SQL:2016 reserved keywords.
     ///
-    /// See [Wikipedia] for details.
+    /// See [Online SQL:2016 grammar] for details.
     ///
-    /// [Wikipedia]: https://en.wikipedia.org/wiki/SQL_reserved_words
+    /// [Online SQL:2016 grammar]: https://jakewheat.github.io/sql-overview/sql-2016-foundation-grammar.html#reserved-word
     AnsiKeyword => {
         ABS,
         ACOS,
