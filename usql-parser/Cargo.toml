@@ -19,9 +19,12 @@ std = [
   "usql-lexer/std",
 ]
 
+ansi = ["usql-ast/ansi", "usql-core/ansi"]
+mysql = ["usql-ast/mysql", "usql-core/mysql"]
+postgres = ["usql-ast/postgres", "usql-core/postgres"]
+sqlite = ["usql-ast/sqlite", "usql-core/sqlite"]
+
 [dependencies]
 usql-ast = { path = "../usql-ast", default-features = false }
 usql-core = { path = "../usql-core", default-features = false }
 usql-lexer = { path = "../usql-lexer", default-features = false }
-
-[dev-dependencies]
