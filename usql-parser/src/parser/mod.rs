@@ -55,7 +55,8 @@ impl<'a, D: Dialect> Parser<'a, D> {
         }
     }
 
-    #[doc(hidden)]
+    /// Consumes the next keyword token and return ok if it matches the expected
+    /// keyword, otherwise return error.
     pub fn expect_keyword(&mut self, expected: Keyword) -> Result<(), ParserError> {
         if self.parse_keyword(expected) {
             Ok(())
@@ -65,7 +66,8 @@ impl<'a, D: Dialect> Parser<'a, D> {
         }
     }
 
-    #[doc(hidden)]
+    /// Consumes the next keyword tokens and return ok if it matches the expected
+    /// keywords, otherwise return error.
     pub fn expect_keywords(&mut self, expected: &[Keyword]) -> Result<(), ParserError> {
         for &kw in expected {
             self.expect_keyword(kw)?;
@@ -73,13 +75,15 @@ impl<'a, D: Dialect> Parser<'a, D> {
         Ok(())
     }
 
-    #[doc(hidden)]
+    /// Consumes the next keyword token and return true if it matches the expected
+    /// keyword, otherwise return false.
     pub fn parse_keyword(&mut self, keyword: Keyword) -> bool {
         self.next_token_if(|token| token.is_keyword(keyword))
             .is_some()
     }
 
-    #[doc(hidden)]
+    /// Consumes the next multiple keyword tokens and return true if they matches the
+    /// expected keywords, otherwise return false.
     pub fn parse_keywords(&mut self, keywords: &[Keyword]) -> bool {
         for &keyword in keywords {
             if let Some(token) = self.peek_next_token() {
@@ -94,10 +98,14 @@ impl<'a, D: Dialect> Parser<'a, D> {
                 return false;
             }
         }
+        for _ in 0..keywords.len() {
+            self.next_token();
+        }
         true
     }
 
-    #[doc(hidden)]
+    /// Consumes the next multiple keyword tokens and return true if they matches the
+    /// expected keywords, otherwise return false.
     pub fn parse_one_of_keywords(&mut self, keywords: &[Keyword]) -> Option<Keyword> {
         match self.peek_token() {
             Some(token) => {
@@ -112,7 +120,8 @@ impl<'a, D: Dialect> Parser<'a, D> {
         }
     }
 
-    #[doc(hidden)]
+    /// Consumes the next token and return ok if it matches the expected token,
+    /// otherwise return error.
     pub fn expect_token(&mut self, expected: &Token) -> Result<(), ParserError> {
         if self.next_token_if_is(expected) {
             Ok(())
@@ -122,27 +131,34 @@ impl<'a, D: Dialect> Parser<'a, D> {
         }
     }
 
-    #[doc(hidden)]
+    /// Returns a reference to the next_token() value without advancing the iterator.
+    ///
+    /// Like [`next_token`], if there is a value, it is wrapped in a `Some(Token)`.
+    /// But if the iteration is over, `None` is returned.
     pub fn peek_token(&mut self) -> Option<&Token> {
         self.iter.peek()
     }
 
-    #[doc(hidden)]
+    /// Works exactly like `.next_token()` with the only difference that it
+    /// doesn't advance itself.
+    /// `.peek_next_token()` can be called multiple times, to peek further ahead.
+    /// When `.next_token()` is called, reset the peeking "cursor".
     pub fn peek_next_token(&mut self) -> Option<&Token> {
         self.iter.peek_next()
     }
 
-    #[doc(hidden)]
+    /// Reset the peek cursor.
     pub fn reset_peek_cursor(&mut self) {
         self.iter.reset_cursor();
     }
 
-    #[doc(hidden)]
+    /// Consumes the next token and return the token.
     pub fn next_token(&mut self) -> Option<Token> {
         self.iter.next()
     }
 
-    #[doc(hidden)]
+    /// Consumes the next token and return the token if it `func` return true,
+    /// otherwise return None.
     pub fn next_token_if(&mut self, func: impl FnOnce(&Token) -> bool) -> Option<Token> {
         self.iter.next_if(func)
     }
@@ -156,6 +172,6 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// Consumes the next token and return true if it matches the expected token,
     /// otherwise return false.
     pub fn next_token_if_is(&mut self, expected: &Token) -> bool {
-        self.iter.next_if_is(expected)
+        self.iter.next_if_eq(expected).is_some()
     }
 }

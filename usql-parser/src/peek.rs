@@ -120,15 +120,6 @@ impl<I: Iterator> MultiPeek<I> {
     {
         self.next_if(|next| next == expected)
     }
-
-    /// Consume the next item and return `true` if it is equal to `expected`, otherwise return `false`.
-    pub fn next_if_is<T>(&mut self, expected: &T) -> bool
-    where
-        T: ?Sized,
-        I::Item: PartialEq<T>,
-    {
-        self.next_if_eq(expected).is_some()
-    }
 }
 
 impl<I> Iterator for MultiPeek<I>
@@ -217,7 +208,6 @@ mod tests {
         assert_eq!(iter.peek_cursor(), 0);
         // The next item returned is now 1, so `consume` will return `false`.
         assert_eq!(iter.next_if_eq(&0), None);
-        assert!(!iter.next_if_is(&0));
         assert_eq!(iter.peek_cursor(), 0);
         // `next_if_eq` saves the value of the next item if it was not equal to `expected`.
         assert_eq!(iter.next(), Some(1));
