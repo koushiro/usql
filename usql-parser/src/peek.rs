@@ -96,8 +96,8 @@ impl<I: Iterator> MultiPeek<I> {
     }
 
     /// Returns the peeking "cursor".
-    #[inline]
-    pub fn peek_cursor(&self) -> usize {
+    #[cfg(test)]
+    pub(crate) fn peek_cursor(&self) -> usize {
         self.index
     }
 

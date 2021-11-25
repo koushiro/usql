@@ -13,8 +13,4 @@ mod error;
 mod parser;
 mod peek;
 
-pub use self::{
-    error::ParserError,
-    parser::Parser,
-    peek::{multipeek, MultiPeek, PeekIteratorExt},
-};
+pub use self::{error::ParserError, parser::Parser};
