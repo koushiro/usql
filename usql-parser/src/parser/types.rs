@@ -17,7 +17,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
         todo!()
     }
 
-    /// Parse literal type.
+    /// Parse literal.
     pub fn parse_literal(&mut self) -> Result<Literal, ParserError> {
         todo!()
     }
