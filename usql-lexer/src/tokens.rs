@@ -208,6 +208,23 @@ impl Token {
     pub fn is_comment(&self) -> bool {
         matches!(self, Token::Comment(_))
     }
+
+    /// Checks if the token is keyword.
+    pub fn is_keyword(&self, keyword: Keyword) -> bool {
+        matches!(self, Token::Word(w) if w.keyword == Some(keyword))
+    }
+
+    /// Checks if the token is keyword, which is one of the `keywords`.
+    pub fn is_one_of_keywords(&self, keywords: &[Keyword]) -> Option<Keyword> {
+        if let Token::Word(w) = self {
+            if let Some(keyword) = w.keyword {
+                if keywords.contains(&keyword) {
+                    return Some(keyword);
+                }
+            }
+        }
+        None
+    }
 }
 
 /// Whitespace token
