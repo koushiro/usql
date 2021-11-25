@@ -12,18 +12,17 @@ macro_rules! kw_def {
     };
 }
 
-/// Expands to a list of `kw_def!()` invocations for each reserved keyword
+/// Expands to a list of `kw_def!()` invocations for each keyword
 /// and defines an ALL_KEYWORDS array of the defined constants.
 ///
-/// **NOTE**: All reserved keywords should be sorted to be able to match using
-/// binary search.
+/// **NOTE**: All keywords should be sorted to be able to match using binary search.
 macro_rules! define_all_keywords {
     (
         $(
             $keyword:ident $(= $string_keyword:expr)?
         ),*
     ) => {
-        /// All reserved keywords
+        /// All keywords
         #[doc(hidden)]
         #[allow(non_camel_case_types)]
         #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -37,7 +36,7 @@ macro_rules! define_all_keywords {
             }
         }
 
-        // /// All reserved keywords
+        // /// All keywords
         // pub const ALL_KEYWORDS_INDEX: &[Keyword] = &[
         //     $(Keyword::$keyword),*
         // ];
@@ -50,10 +49,9 @@ macro_rules! define_all_keywords {
     }
 }
 
-/// Define a list of reserved keywords of the dialect.
+/// Define a list of keywords of the dialect.
 ///
-/// **NOTE**: All reserved keywords should be sorted to be able to match using
-/// binary search.
+/// **NOTE**: All keywords should be sorted to be able to match using binary search.
 #[macro_export]
 macro_rules! define_keyword {
     (
