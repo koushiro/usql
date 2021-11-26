@@ -20,7 +20,7 @@ pub struct Select {
     /// WHERE clause
     pub selection: Option<Box<Expr>>,
     /// GROUP BY clause
-    pub group_by: Vec<Expr>,
+    pub group_by: Option<Vec<Expr>>,
     /// HAVING clause
     pub having: Option<Box<Expr>>,
     /// WINDOW clause
@@ -34,14 +34,14 @@ impl fmt::Display for Select {
             write!(f, " {}", quantifier)?;
         }
         write!(f, " {}", display_comma_separated(&self.projection))?;
-        if !self.from.is_empty() {
-            write!(f, " FROM {}", display_comma_separated(&self.from))?;
-        }
+
+        assert!(!self.from.is_empty());
+        write!(f, " FROM {}", display_comma_separated(&self.from))?;
         if let Some(selection) = &self.selection {
             write!(f, " WHERE {}", selection)?;
         }
-        if !self.group_by.is_empty() {
-            write!(f, " GROUP BY {}", display_comma_separated(&self.group_by))?;
+        if let Some(group_by) = &self.group_by {
+            write!(f, " GROUP BY {}", display_comma_separated(group_by))?;
         }
         if let Some(having) = &self.having {
             write!(f, " HAVING {}", having)?;
