@@ -50,27 +50,27 @@ pub enum DataType {
     Double,
 
     // ========================================================================
-    // Character Types
+    // Character String Types
     // ========================================================================
     /// Fixed-length character type e.g. CHAR(10)
     Char(Option<u64>),
     /// Variable-length character type e.g. VARCHAR(10)
-    Varchar(Option<u64>),
+    Varchar(u64),
     /// Character large object e.g. CLOB(1000)
-    Clob(u64),
-    /// Text type, variable unlimited length characters.
+    Clob(Option<u64>),
+    /// Text type, variable unlimited length characters. (Not ANSI SQL)
     Text,
 
     // ========================================================================
-    // Binary Data Types
+    // Binary String Types
     // ========================================================================
     /// Fixed-length binary type e.g. BINARY(10)
-    Binary(u64),
+    Binary(Option<u64>),
     /// Variable-length binary type e.g. VARBINARY(10)
     Varbinary(u64),
     /// Binary large object e.g. BLOB(1000)
-    Blob(u64),
-    /// Bytea type, variable-length binary string.
+    Blob(Option<u64>),
+    /// Bytea type, variable-length binary string. (Not ANSI SQL)
     Bytea,
 
     // ========================================================================
@@ -124,13 +124,13 @@ impl fmt::Display for DataType {
             DataType::Double => write!(f, "DOUBLE PRECISION"),
 
             DataType::Char(size) => format_type_with_optional_length(f, "CHAR", size),
-            DataType::Varchar(size) => format_type_with_optional_length(f, "VARCHAR", size),
-            DataType::Clob(size) => write!(f, "CLOB({})", size),
+            DataType::Varchar(size) => write!(f, "VARCHAR({})", size),
+            DataType::Clob(size) => format_type_with_optional_length(f, "CLOB({})", size),
             DataType::Text => write!(f, "TEXT"),
 
-            DataType::Binary(size) => write!(f, "BINARY({})", size),
+            DataType::Binary(size) => format_type_with_optional_length(f, "BINARY({})", size),
             DataType::Varbinary(size) => write!(f, "VARBINARY({})", size),
-            DataType::Blob(size) => write!(f, "BLOB({})", size),
+            DataType::Blob(size) => format_type_with_optional_length(f, "BLOB({})", size),
             DataType::Bytea => write!(f, "BYTEA"),
 
             DataType::Date => write!(f, "DATE"),

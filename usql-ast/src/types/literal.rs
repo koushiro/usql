@@ -21,10 +21,10 @@ pub enum Literal {
     String(String),
     /// National string literal, e.g. N'string'
     NationalString(String),
-    /// Bit string literal, e.g. B'010101'
-    BitString(String),
     /// Hex string literal, e.g. X'0123456789abcdef'
     HexString(String),
+    /// Bit string literal, e.g. B'010101'
+    BitString(String),
 
     /// DATE literal
     Date(Date),

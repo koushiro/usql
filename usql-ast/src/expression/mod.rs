@@ -1,6 +1,7 @@
 mod function;
 mod operator;
 mod query;
+mod table;
 
 #[cfg(not(feature = "std"))]
 use alloc::{boxed::Box, vec::Vec};
@@ -10,6 +11,7 @@ pub use self::{
     function::*,
     operator::{BinaryOperator, UnaryOperator},
     query::*,
+    table::*,
 };
 use crate::{
     types::{DataType, DateTimeField, Ident, Literal, ObjectName},
