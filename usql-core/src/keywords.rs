@@ -86,6 +86,8 @@ define_all_keywords! {
     BUCKETS,
     BY,
     BYTE,
+    // `BYTEA` is not a keyword in PostgreSQL, but we treat it as a keyword.
+    BYTEA,
     C,
     CACHE,
     CALL,

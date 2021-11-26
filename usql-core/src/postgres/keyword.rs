@@ -41,6 +41,8 @@ define_keyword! {
         BOOLEAN,
         BOTH,
         BY,
+        // `BYTEA` is not a keyword in PostgreSQL, but we treat it as a keyword.
+        BYTEA,
         CACHE,
         CALL,
         CALLED,
