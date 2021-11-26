@@ -314,9 +314,9 @@ pub struct WindowSpec {
     /// The existing window name.
     pub name: Option<Ident>,
     /// Window partition clauses.
-    pub partition_by: Vec<Expr>,
+    pub partition_by: Option<Vec<Expr>>,
     /// Window order clauses.
-    pub order_by: Vec<OrderBy>,
+    pub order_by: Option<OrderBy>,
     /// Window frame clause.
     pub window_frame: Option<WindowFrame>,
 }
@@ -328,19 +328,15 @@ impl fmt::Display for WindowSpec {
             delimit = " ";
             write!(f, "{}", name)?;
         }
-        if !self.partition_by.is_empty() {
+        if let Some(partition_by) = &self.partition_by {
             f.write_str(delimit)?;
             delimit = " ";
-            write!(
-                f,
-                "PARTITION BY {}",
-                display_comma_separated(&self.partition_by)
-            )?;
+            write!(f, "PARTITION BY {}", display_comma_separated(partition_by))?;
         }
-        if !self.order_by.is_empty() {
+        if let Some(order) = &self.order_by {
             f.write_str(delimit)?;
             delimit = " ";
-            write!(f, "ORDER BY {}", display_comma_separated(&self.order_by))?;
+            write!(f, "{}", order)?;
         }
         if let Some(window_frame) = &self.window_frame {
             f.write_str(delimit)?;
