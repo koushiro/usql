@@ -16,5 +16,5 @@ mod tokens;
 pub use self::{
     error::{LexerError, Location},
     lexer::Lexer,
-    tokens::{Comment, Token, Whitespace},
+    tokens::{Comment, Token, Whitespace, Word},
 };
