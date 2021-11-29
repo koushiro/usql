@@ -10,7 +10,7 @@ echo 'Getting SQL:2016 keywords...'
 # cat tmp.txt | grep -oe "\w*" > sql2016_reserved.txt
 # Copy <non-reserved word> into tmp.txt
 # cat tmp.txt | grep -oe "\w*" > sql2016_non_reserved.txt
-# cat sql2016_reserved.txt sql2016_non_reserved.txt | sort | uniq > sql2016.txt
+# cat sql2016_reserved.txt sql2016_non_reserved.txt | LC_ALL=C sort | uniq > sql2016.txt
 
 echo 'SQL:2016: DONE'
 
@@ -21,7 +21,7 @@ echo 'SQL:2016: DONE'
 #echo 'Getting SQL:2016 reserved keywords...'
 #
 #curl -s https://en.wikipedia.org/wiki/SQL_reserved_words | pcregrep -M 'class="table-rh">.*\n</th>\n<td>SQL-2016</td>' | \
-#  grep -oe 'class="table-rh">\w*' | awk -F ">" '{print $2}' | sort | uniq > sql2016.txt
+#  grep -oe 'class="table-rh">\w*' | awk -F ">" '{print $2}' | LC_ALL=C sort | uniq > sql2016.txt
 
 ###############################################################################
 
@@ -30,12 +30,12 @@ echo 'SQL:2016: DONE'
 echo 'Getting PostgreSQL keywords...'
 
 curl -s https://www.postgresql.org/docs/13/sql-keywords-appendix.html | pcregrep -M '<td><code class="token">.*</code></td>.*\n.*<td>reserved' | \
-  grep -oe '>\w*</code>' | awk -F ">|<" '{print $2}' | sort | uniq > postgresql_reserved.txt
+  grep -oe '>\w*</code>' | awk -F ">|<" '{print $2}' | LC_ALL=C sort | uniq > postgresql_reserved.txt
 
 curl -s https://www.postgresql.org/docs/13/sql-keywords-appendix.html | pcregrep -M '<td><code class="token">.*</code></td>.*\n.*<td>non-reserved' | \
-  grep -oe '>\w*</code>' | awk -F ">|<" '{print $2}' | sort | uniq > postgresql_non_reserved.txt
+  grep -oe '>\w*</code>' | awk -F ">|<" '{print $2}' | LC_ALL=C sort | uniq > postgresql_non_reserved.txt
 
-cat postgresql_reserved.txt postgresql_non_reserved.txt | sort | uniq > postgresql.txt
+cat postgresql_reserved.txt postgresql_non_reserved.txt | LC_ALL=C sort | uniq > postgresql.txt
 
 echo 'PostgreSQL: DONE'
 
@@ -53,13 +53,13 @@ echo 'PostgreSQL: DONE'
 
 echo 'Getting MySQL keywords...'
 
-curl -s https://dev.mysql.com/doc/refman/8.0/en/keywords.html | grep -oe "<code class=\"literal\">\w*</code> (R)" | awk -F ">|<" '{print $3}' | sort | uniq > mysql_reserved.txt
+curl -s https://dev.mysql.com/doc/refman/8.0/en/keywords.html | grep -oe "<code class=\"literal\">\w*</code> (R)" | awk -F ">|<" '{print $3}' | LC_ALL=C sort | uniq > mysql_reserved.txt
 
-curl -s https://dev.mysql.com/doc/refman/8.0/en/keywords.html | grep -oe "<code class=\"literal\">\w*</code></p></li>" | awk -F ">|<" '{print $3}' | sort | uniq > mysql_non_reserved.txt
-curl -s https://dev.mysql.com/doc/refman/8.0/en/keywords.html | grep -oe "<code class=\"literal\">\w*</code>; added"  | awk -F ">|<" '{print $3}' | sort | uniq >> mysql_non_reserved.txt
-curl -s https://dev.mysql.com/doc/refman/8.0/en/keywords.html | grep -oe "<code class=\"literal\">\w*</code>; became"  | awk -F ">|<" '{print $3}' | sort | uniq >> mysql_non_reserved.txt
-cat mysql_non_reserved.txt | sort | uniq > mysql_non_reserved.txt
-cat mysql_reserved.txt mysql_non_reserved.txt | sort | uniq > mysql.txt
+curl -s https://dev.mysql.com/doc/refman/8.0/en/keywords.html | grep -oe "<code class=\"literal\">\w*</code></p></li>" | awk -F ">|<" '{print $3}' | LC_ALL=C sort | uniq > mysql_non_reserved.txt
+curl -s https://dev.mysql.com/doc/refman/8.0/en/keywords.html | grep -oe "<code class=\"literal\">\w*</code>; added"  | awk -F ">|<" '{print $3}' | LC_ALL=C sort | uniq >> mysql_non_reserved.txt
+curl -s https://dev.mysql.com/doc/refman/8.0/en/keywords.html | grep -oe "<code class=\"literal\">\w*</code>; became"  | awk -F ">|<" '{print $3}' | LC_ALL=C sort | uniq >> mysql_non_reserved.txt
+cat mysql_non_reserved.txt | LC_ALL=C sort | uniq > mysql_non_reserved.txt
+cat mysql_reserved.txt mysql_non_reserved.txt | LC_ALL=C sort | uniq > mysql.txt
 
 echo 'MySQL: DONE'
 
@@ -69,7 +69,7 @@ echo 'MySQL: DONE'
 
 echo 'Getting SQLite keywords...'
 
-curl -s https://www.sqlite.org/lang_keywords.html | grep -oe "<li>\w*</li>" | awk -F ">|<" '{print $3}' | sort | uniq > sqlite.txt
+curl -s https://www.sqlite.org/lang_keywords.html | grep -oe "<li>\w*</li>" | awk -F ">|<" '{print $3}' | LC_ALL=C sort | uniq > sqlite.txt
 
 echo 'SQLite: DONE'
 
@@ -77,6 +77,6 @@ echo 'SQLite: DONE'
 
 echo 'Merge and Deduplication'
 
-cat sql2016.txt postgresql.txt mysql.txt sqlite.txt | sort | uniq > total.txt
+cat sql2016.txt postgresql.txt mysql.txt sqlite.txt | LC_ALL=C sort | uniq > total.txt
 
 echo 'ALL: DONE'
