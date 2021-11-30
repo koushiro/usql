@@ -62,109 +62,88 @@ impl fmt::Display for Literal {
 }
 
 /// Date literal, format: `DATE '<years>-<months>-<days>', e.g. `DATE '2021-11-09'`.
-#[doc(hidden)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+///
+/// **NOTE**: the parser does not validate the `<value>` as required by the SQL specification.
+/// Downstream consumers are responsible for rejecting date with invalid value.
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Date {
-    pub years: u16, // u16::MAX = 65535, which is big enough for representing the year.
-    pub months: u8,
-    pub days: u8,
+    /// The raw `<value>` that was present in `DATE '<value>'`.
+    pub value: String,
 }
 
 impl fmt::Display for Date {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}-{:02}-{:02}", self.years, self.months, self.days)
+        write!(f, "{}", self.value)
     }
 }
 
 /// Time literal, roughly in the following format:
-/// `TIME '<hours>:<minutes>:<seconds> [ .<seconds fraction> ] [ <time zone interval>  ]'`
+///
+/// ```txt
+/// TIME '<hours>:<minutes>:<seconds> [ .<seconds fraction> ] [ <time zone interval>  ]'
+/// ```
 /// e.g. `TIME '11:40:12.1234+08:00'`.
-#[doc(hidden)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+///
+/// **NOTE**: the parser does not validate the `<value>` as required by the SQL specification.
+/// Downstream consumers are responsible for rejecting time with invalid value.
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Time {
-    pub hours: u8,
-    pub minutes: u8,
-    pub seconds: u8,
-    pub seconds_fraction: Option<u32>,
-    pub time_zone: Option<TimeZone>,
+    /// The raw `<value>` that was present in `TIME '<value>'`.
+    pub value: String,
 }
 
 impl fmt::Display for Time {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{:02}:{:02}:{:02}",
-            self.hours, self.minutes, self.seconds
-        )?;
-        if let Some(seconds_fraction) = self.seconds_fraction {
-            write!(f, ".{}", seconds_fraction)?;
-        }
-        if let Some(time_zone) = self.time_zone {
-            write!(f, "{}", time_zone)?;
-        }
-        Ok(())
+        write!(f, "{}", self.value)
     }
 }
 
-/// The time zone field of time literal, format: `<sign><hours>:<minutes>`
-/// e.g. `TIME '11:40:12.1234+08:00'`.
-#[doc(hidden)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct TimeZone {
-    pub plus_sign: bool, // true: plus sign; false: minus sign.
-    pub hours: u8,
-    pub minutes: u8,
-}
-
-impl fmt::Display for TimeZone {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.plus_sign {
-            write!(f, "+{:02}:{:02}", self.hours, self.minutes)
-        } else {
-            write!(f, "-{:02}:{:02}", self.hours, self.minutes)
-        }
-    }
-}
-
-/// Timestamp literal, , roughly in the following format:
-/// `TIMESTAMP '<years>-<months>-<days> <hours>:<minutes>:<seconds> [ .<seconds fraction> ] [ <time zone interval>  ]'`
-#[doc(hidden)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+/// Timestamp literal, roughly in the following format:
+///
+/// ```txt
+/// TIMESTAMP '<years>-<months>-<days> <hours>:<minutes>:<seconds> [ .<seconds fraction> ] [ <time zone interval>  ]'
+/// ```
+///
+/// **NOTE**: the parser does not validate the `<value>` as required by the SQL specification.
+/// Downstream consumers are responsible for rejecting timestamp with invalid value.
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Timestamp {
-    pub date: Date,
-    pub time: Option<Time>,
+    /// The raw `<value>` that was present in `TIMESTAMP '<value>'`.
+    pub value: String,
 }
 
 impl fmt::Display for Timestamp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(time) = self.time {
-            write!(f, "{} {}", self.date, time)?;
-        } else {
-            write!(f, "{}", self.date)?;
-        }
-        Ok(())
+        write!(f, "{}", self.value)
     }
 }
 
 /// INTERVAL literals, roughly in the following format:
 ///
 /// ```ignore
-/// INTERVAL '<value>' <leading_field> [ (<leading_precision>) ]
-///     [ TO <tailing_field> [ (<fractional_seconds_precision>) ] ]
+/// 1. INTERVAL '<value>' <leading field> [ (<leading precision>) ] TO <tailing field>
+/// 2. INTERVAL '<value>' <leading field> [ (<leading precision>) ] TO SECOND [ (<fractional seconds precision>) ]
+/// 3. INTERVAL '<value>' <leading field> [ (<leading precision>) ]
+/// 4. INTERVAL '<value>' SECOND [ (<leading precision> [ , <fractional seconds precision> ] ) ]
 /// ```
 ///
 /// For example: `INTERVAL '123:45.67' MINUTE (3) TO SECOND (2)`
 ///
-/// The parser does not validate the `<value>`, nor does it ensure that the
+/// **Note**:
+///
+/// 1. The SQL standard allows an optional sign before the value string, but
+/// it is not clear if any implementations support that syntax, so we
+/// don't currently try to parse it. (The sign can instead be included
+/// inside the value string.)
+///
+/// 2. The parser does not validate the `<value>`, nor does it ensure that the
 /// `<leading_field>` units are coarser than the units in `<tailing_field>`,
 /// as required by the SQL specification. Downstream consumers are responsible
 /// for rejecting intervals with invalid values, like `'foobar'`, and invalid
 /// unit specifications, like `HOUR TO YEAR`.
-#[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Interval {
@@ -172,6 +151,9 @@ pub struct Interval {
     pub value: String,
     /// The unit of the first field in the interval.
     /// For example, `INTERVAL 'T' MINUTE` means `T` is in minutes.
+    ///
+    /// **Note**: PostgreSQL allows omitting the qualifier, so we provide
+    /// this more general implementation.
     pub leading_field: Option<DateTimeField>,
     /// How many digits the leading field is allowed to occupy.
     ///
@@ -300,78 +282,101 @@ mod tests {
     #[test]
     fn datetime_literal_display() {
         let date = Date {
-            years: 2021,
-            months: 11,
-            days: 9,
+            value: "2021-11-29".into(),
         };
-        assert_eq!(Literal::Date(date).to_string(), "DATE '2021-11-09'");
+        assert_eq!(Literal::Date(date).to_string(), "DATE '2021-11-29'");
 
-        let mut time = Time {
-            hours: 15,
-            minutes: 37,
-            seconds: 12,
-            seconds_fraction: None,
-            time_zone: None,
+        let time = Time {
+            value: "12:34:56".into(),
         };
-        assert_eq!(Literal::Time(time).to_string(), "TIME '15:37:12'");
-        time.seconds_fraction = Some(123456);
-        assert_eq!(Literal::Time(time).to_string(), "TIME '15:37:12.123456'");
-        time.time_zone = Some(TimeZone {
-            plus_sign: true,
-            hours: 8,
-            minutes: 0,
-        });
-        assert_eq!(
-            Literal::Time(time).to_string(),
-            "TIME '15:37:12.123456+08:00'"
-        );
+        assert_eq!(Literal::Time(time).to_string(), "TIME '12:34:56'");
+        let time = Time {
+            value: "12:34:56.789".into(),
+        };
+        assert_eq!(Literal::Time(time).to_string(), "TIME '12:34:56.789'");
+        let time = Time {
+            value: "12:34:56.789+08:30".into(),
+        };
+        assert_eq!(Literal::Time(time).to_string(), "TIME '12:34:56.789+08:30'");
 
         let timestamp = Timestamp {
-            date,
-            time: Some(time),
+            value: "2021-11-29 12:34:56.789+08:30".into(),
         };
         assert_eq!(
             Literal::Timestamp(timestamp).to_string(),
-            "TIMESTAMP '2021-11-09 15:37:12.123456+08:00'"
+            "TIMESTAMP '2021-11-29 12:34:56.789+08:30'"
         );
     }
 
     #[test]
     fn interval_literal_display() {
         let interval = Interval {
-            value: "2021".to_string(),
+            value: "1-1".into(),
             leading_field: Some(DateTimeField::Year),
-            leading_precision: Some(4),
+            leading_precision: None,
+            tailing_field: Some(DateTimeField::Month),
+            fractional_seconds_precision: None,
+        };
+        assert_eq!(
+            Literal::Interval(interval).to_string(),
+            "INTERVAL '1-1' YEAR TO MONTH"
+        );
+
+        let interval = Interval {
+            value: "1:1:1.1".into(),
+            leading_field: Some(DateTimeField::Hour),
+            leading_precision: None,
+            tailing_field: Some(DateTimeField::Second),
+            fractional_seconds_precision: Some(5),
+        };
+        assert_eq!(
+            Literal::Interval(interval).to_string(),
+            "INTERVAL '1:1:1.1' HOUR TO SECOND(5)"
+        );
+
+        let interval = Interval {
+            value: "1".into(),
+            leading_field: Some(DateTimeField::Day),
+            leading_precision: None,
+            tailing_field: None,
+            fractional_seconds_precision: None,
+        };
+        assert_eq!(Literal::Interval(interval).to_string(), "INTERVAL '1' DAY");
+
+        let interval = Interval {
+            value: "1.1".into(),
+            leading_field: Some(DateTimeField::Second),
+            leading_precision: Some(2),
+            tailing_field: None,
+            fractional_seconds_precision: Some(2),
+        };
+        assert_eq!(
+            Literal::Interval(interval).to_string(),
+            "INTERVAL '1.1' SECOND(2, 2)"
+        );
+
+        let interval = Interval {
+            value: "1.1".into(),
+            leading_field: Some(DateTimeField::Second),
+            leading_precision: Some(2),
             tailing_field: None,
             fractional_seconds_precision: None,
         };
         assert_eq!(
             Literal::Interval(interval).to_string(),
-            "INTERVAL '2021' YEAR(4)"
+            "INTERVAL '1.1' SECOND(2)"
         );
 
         let interval = Interval {
-            value: "1:1:1".to_string(),
+            value: "1.1".into(),
             leading_field: Some(DateTimeField::Second),
-            leading_precision: Some(4),
-            tailing_field: None,
-            fractional_seconds_precision: Some(2),
-        };
-        assert_eq!(
-            Literal::Interval(interval).to_string(),
-            "INTERVAL '1:1:1' SECOND(4, 2)"
-        );
-
-        let interval = Interval {
-            value: "1:1:1".to_string(),
-            leading_field: Some(DateTimeField::Hour),
             leading_precision: None,
-            tailing_field: Some(DateTimeField::Second),
-            fractional_seconds_precision: Some(2),
+            tailing_field: None,
+            fractional_seconds_precision: None,
         };
         assert_eq!(
             Literal::Interval(interval).to_string(),
-            "INTERVAL '1:1:1' HOUR TO SECOND(2)"
+            "INTERVAL '1.1' SECOND"
         );
     }
 }
