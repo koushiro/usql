@@ -415,7 +415,9 @@ mod tests {
         let dialect = usql_core::ansi::AnsiDialect::default();
         assert_eq!(
             Parser::new_with_sql(&dialect, "DATE '2021-11-29'")?.parse_literal()?,
-            Literal::Date(Date { value: "2021-11-29".into()})
+            Literal::Date(Date {
+                value: "2021-11-29".into()
+            })
         );
         Ok(())
     }
@@ -425,11 +427,15 @@ mod tests {
         let dialect = usql_core::ansi::AnsiDialect::default();
         assert_eq!(
             Parser::new_with_sql(&dialect, "TIME '12:34:56'")?.parse_literal()?,
-            Literal::Time(Time { value: "12:34:56".into() })
+            Literal::Time(Time {
+                value: "12:34:56".into()
+            })
         );
         assert_eq!(
             Parser::new_with_sql(&dialect, "TIME '12:34:56.789'")?.parse_literal()?,
-            Literal::Time(Time { value: "12:34:56.789".into() })
+            Literal::Time(Time {
+                value: "12:34:56.789".into()
+            })
         );
         Ok(())
     }
@@ -440,12 +446,16 @@ mod tests {
         assert_eq!(
             Parser::new_with_sql(&dialect, "TIMESTAMP '2021-11-29 12:34:56.789+08:30'")?
                 .parse_literal()?,
-            Literal::Timestamp(Timestamp { value: "2021-11-29 12:34:56.789+08:30".into() })
+            Literal::Timestamp(Timestamp {
+                value: "2021-11-29 12:34:56.789+08:30".into()
+            })
         );
         assert_eq!(
             Parser::new_with_sql(&dialect, "TIMESTAMP '2021-11-29 12:34:56+08:30'")?
                 .parse_literal()?,
-            Literal::Timestamp(Timestamp { value: "2021-11-29 12:34:56+08:30".into() })
+            Literal::Timestamp(Timestamp {
+                value: "2021-11-29 12:34:56+08:30".into()
+            })
         );
         Ok(())
     }
@@ -499,11 +509,11 @@ mod tests {
             })
         );
         assert_eq!(
-            Parser::new_with_sql(&dialect, "INTERVAL '1.1' SECOND (3)")?.parse_literal()?,
+            Parser::new_with_sql(&dialect, "INTERVAL '1.1' SECOND (2)")?.parse_literal()?,
             Literal::Interval(Interval {
                 value: "1.1".into(),
                 leading_field: Some(DateTimeField::Second),
-                leading_precision: Some(3),
+                leading_precision: Some(2),
                 tailing_field: None,
                 fractional_seconds_precision: None,
             })
