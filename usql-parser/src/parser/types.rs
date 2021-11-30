@@ -171,19 +171,19 @@ impl<'a, D: Dialect> Parser<'a, D> {
             if self.next_token_if_is(&Token::LeftBracket) {
                 let length = self.parse_literal_uint()?;
                 self.expect_token(&Token::RightBracket)?;
-                Ok(DataType::Array(Box::new(data_type.clone()), Some(length)))
+                Ok(DataType::Array(Box::new(data_type), Some(length)))
             } else {
-                Ok(DataType::Array(Box::new(data_type.clone()), None))
+                Ok(DataType::Array(Box::new(data_type), None))
             }
         } else {
             // PostgreSQL-specific e.g. INTEGER[], INTEGER[10]
             if self.next_token_if_is(&Token::LeftBracket) {
                 if self.next_token_if_is(&Token::RightBracket) {
-                    Ok(DataType::Array(Box::new(data_type.clone()), None))
+                    Ok(DataType::Array(Box::new(data_type), None))
                 } else {
                     let length = self.parse_literal_uint()?;
                     self.expect_token(&Token::RightBracket)?;
-                    Ok(DataType::Array(Box::new(data_type.clone()), Some(length)))
+                    Ok(DataType::Array(Box::new(data_type), Some(length)))
                 }
             } else {
                 Ok(data_type)
