@@ -11,7 +11,7 @@ use crate::{
 };
 
 impl<'a, D: Dialect> Parser<'a, D> {
-    /// Parse identifier.
+    /// Parses an identifier.
     pub fn parse_identifier(&mut self) -> Result<Ident, ParserError> {
         match self.next_token() {
             Some(Token::Word(w)) => Ok(Ident {
@@ -22,7 +22,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
         }
     }
 
-    /// Parse object name.
+    /// Parses an object name.
     pub fn parse_object_name(&mut self) -> Result<ObjectName, ParserError> {
         let mut idents = vec![];
         loop {
