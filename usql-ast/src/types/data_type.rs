@@ -16,7 +16,7 @@ pub enum DataType {
     TinyInt(Option<u64>),
     /// Small integer (-2^15 ~ 2^15 - 1) with optional display width e.g. SMALLINT or SMALLINT(5)
     SmallInt(Option<u64>),
-    /// Integer (-2^31 ~ 2^31 - 1) with optional display width e.g. INT or INT(10)
+    /// Integer (-2^31 ~ 2^31 - 1) with optional display width e.g. INT, INTEGER or INT(10), INTEGER(10)
     Int(Option<u64>),
     /// Big integer (-2^63 ~ 2^63 - 1) with optional display width e.g. BIGINT or BIGINT(19)
     BigInt(Option<u64>),
@@ -89,7 +89,7 @@ pub enum DataType {
     // Collection Types
     // ========================================================================
     /// Array
-    Array(Box<DataType>),
+    Array(Box<DataType>, Option<u64>),
 }
 
 impl fmt::Display for DataType {
@@ -138,7 +138,13 @@ impl fmt::Display for DataType {
             DataType::Timestamp => write!(f, "TIMESTAMP"),
             DataType::Interval => write!(f, "INTERVAL"),
 
-            DataType::Array(ty) => write!(f, "{}[]", ty),
+            DataType::Array(ty, length) => {
+                if let Some(length) = length {
+                    write!(f, "{}[{}]", ty, length)
+                } else {
+                    write!(f, "{}[]", ty)
+                }
+            }
         }
     }
 }

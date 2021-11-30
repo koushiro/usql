@@ -4,13 +4,13 @@ mod types;
 
 #[cfg(not(feature = "std"))]
 use alloc::{
+    boxed::Box,
     format,
-    string::String,
-    vec::{IntoIter, Vec},
+    string::{String, ToString},
+    vec,
+    vec::Vec,
 };
 use core::fmt::Display;
-#[cfg(feature = "std")]
-use std::vec::IntoIter;
 
 use usql_core::{Dialect, Keyword};
 use usql_lexer::{Lexer, Token};
@@ -24,15 +24,19 @@ use crate::{
 pub struct Parser<'a, D: Dialect> {
     #[allow(unused)]
     dialect: &'a D,
-    iter: MultiPeek<IntoIter<Token>>,
+    iter: MultiPeek<Box<dyn Iterator<Item = Token> + 'static>>,
 }
 
 impl<'a, D: Dialect> Parser<'a, D> {
     /// Creates a new SQL parser with the given tokens.
     pub fn new_with_tokens(dialect: &'a D, tokens: Vec<Token>) -> Self {
+        // ignore whitespace and comment.
+        let filter = tokens
+            .into_iter()
+            .filter(|token| !token.is_whitespace() && !token.is_comment());
         Self {
             dialect,
-            iter: tokens.into_iter().multipeek(),
+            iter: (Box::new(filter) as Box<dyn Iterator<Item = Token>>).multipeek(),
         }
     }
 
@@ -40,6 +44,21 @@ impl<'a, D: Dialect> Parser<'a, D> {
     pub fn new_with_sql(dialect: &'a D, sql: &str) -> Result<Self, ParserError> {
         let tokens = Lexer::new(dialect, sql).tokenize()?;
         Ok(Self::new_with_tokens(dialect, tokens))
+    }
+
+    /// Parse a comma-separated list of 1+ items accepted by `F`.
+    pub fn parse_comma_separated<T, F>(&mut self, mut f: F) -> Result<Vec<T>, ParserError>
+    where
+        F: FnMut(&mut Parser<'a, D>) -> Result<T, ParserError>,
+    {
+        let mut values = vec![];
+        loop {
+            values.push(f(self)?);
+            if !self.next_token_if_is(&Token::Comma) {
+                break;
+            }
+        }
+        Ok(values)
     }
 
     /// Report unexpected token.
@@ -51,7 +70,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
         if let Some(found) = found {
             parse_error(format!("Expected: {}, found: {}", expected, found))
         } else {
-            parse_error(format!("Expected: {}, found: EOF", expected))
+            parse_error(format!("Expected: {}, but not found", expected))
         }
     }
 
@@ -66,13 +85,22 @@ impl<'a, D: Dialect> Parser<'a, D> {
         }
     }
 
-    /// Consumes the next keyword tokens and return ok if it matches the expected
-    /// keywords, otherwise return error.
+    /// Consumes the next keyword tokens if they matches the expected keywords, otherwise return error.
     pub fn expect_keywords(&mut self, expected: &[Keyword]) -> Result<(), ParserError> {
         for &kw in expected {
             self.expect_keyword(kw)?;
         }
         Ok(())
+    }
+
+    /// Consumes the next keyword token if the token is one of the expected keywords.
+    pub fn expect_one_of_keywords(&mut self, keywords: &[Keyword]) -> Result<Keyword, ParserError> {
+        if let Some(keyword) = self.parse_one_of_keywords(keywords) {
+            Ok(keyword)
+        } else {
+            let found = self.peek_token().cloned();
+            self.expected(format!("one of {:?}", keywords), found)
+        }
     }
 
     /// Consumes the next keyword token and return true if it matches the expected
@@ -104,8 +132,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
         true
     }
 
-    /// Consumes the next multiple keyword tokens and return true if they matches the
-    /// expected keywords, otherwise return false.
+    /// Consumes the next keyword token if the token is one of the expected keywords.
     pub fn parse_one_of_keywords(&mut self, keywords: &[Keyword]) -> Option<Keyword> {
         match self.peek_token() {
             Some(token) => {

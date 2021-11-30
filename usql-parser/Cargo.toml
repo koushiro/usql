@@ -28,3 +28,7 @@ sqlite = ["usql-ast/sqlite", "usql-core/sqlite"]
 usql-ast = { path = "../usql-ast", default-features = false }
 usql-core = { path = "../usql-core", default-features = false }
 usql-lexer = { path = "../usql-lexer", default-features = false }
+
+[dev-dependencies]
+usql-ast = { path = "../usql-ast", default-features = false, features = ["ansi", "mysql", "postgres", "sqlite"] }
+usql-core = { path = "../usql-core", default-features = false, features = ["ansi", "mysql", "postgres", "sqlite"] }
