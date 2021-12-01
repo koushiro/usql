@@ -239,7 +239,7 @@ mod tests {
         );
         assert_eq!(
             Parser::new_with_sql(&dialect, "SET TRANSACTION")?.parse_set_transaction_stmt(),
-            parse_error("Expected: transaction characteristic, but not found".into())
+            parse_error("Expected: transaction characteristic, but not found")
         );
         // MySQL: SET [GLOBAL | SESSION] TRANSACTION transaction_mode [, ...]
         let dialect = usql_core::mysql::MysqlDialect::default();
