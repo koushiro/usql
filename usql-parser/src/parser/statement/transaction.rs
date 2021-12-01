@@ -79,7 +79,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
                 TransactionCharacteristic::AccessMode(TransactionAccessMode::ReadWrite)
             } else if required {
                 let found = self.peek_token().cloned();
-                self.expected("transaction mode", found)?
+                self.expected("transaction characteristic", found)?
             } else {
                 break;
             };
@@ -127,6 +127,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::parse_error;
 
     #[test]
     fn parse_stmt_start_transaction() -> Result<(), ParserError> {
@@ -235,6 +236,10 @@ mod tests {
                     TransactionAccessMode::ReadOnly.into()
                 ]
             }
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "SET TRANSACTION")?.parse_set_transaction_stmt(),
+            parse_error("Expected: transaction characteristic, but not found".into())
         );
         // MySQL: SET [GLOBAL | SESSION] TRANSACTION transaction_mode [, ...]
         let dialect = usql_core::mysql::MysqlDialect::default();
