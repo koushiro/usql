@@ -12,15 +12,15 @@ use crate::utils::display_comma_separated;
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StartTransactionStmt {
-    /// The transaction modes.
-    pub modes: Vec<TransactionMode>,
+    /// The transaction characteristics.
+    pub characteristics: Vec<TransactionCharacteristic>,
 }
 
 impl fmt::Display for StartTransactionStmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("START TRANSACTION")?;
-        if !self.modes.is_empty() {
-            write!(f, " {}", display_comma_separated(&self.modes))?;
+        if !self.characteristics.is_empty() {
+            write!(f, " {}", display_comma_separated(&self.characteristics))?;
         }
         Ok(())
     }
@@ -34,35 +34,47 @@ impl fmt::Display for StartTransactionStmt {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SetTransactionStmt {
-    /// The transaction modes.
-    pub modes: Vec<TransactionMode>,
+    /// The transaction characteristics.
+    pub characteristics: Vec<TransactionCharacteristic>,
 }
 
 impl fmt::Display for SetTransactionStmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("SET TRANSACTION")?;
-        if !self.modes.is_empty() {
-            write!(f, " {}", display_comma_separated(&self.modes))?;
+        if !self.characteristics.is_empty() {
+            write!(f, " {}", display_comma_separated(&self.characteristics))?;
         }
         Ok(())
     }
 }
 
-/// The mode of transaction.
+/// The transaction characteristic.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum TransactionMode {
+pub enum TransactionCharacteristic {
     AccessMode(TransactionAccessMode),
     IsolationLevel(TransactionIsolationLevel),
 }
 
-impl fmt::Display for TransactionMode {
+impl fmt::Display for TransactionCharacteristic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::AccessMode(mode) => write!(f, "{}", mode),
             Self::IsolationLevel(level) => write!(f, "ISOLATION LEVEL {}", level),
         }
+    }
+}
+
+impl From<TransactionAccessMode> for TransactionCharacteristic {
+    fn from(mode: TransactionAccessMode) -> Self {
+        Self::AccessMode(mode)
+    }
+}
+
+impl From<TransactionIsolationLevel> for TransactionCharacteristic {
+    fn from(level: TransactionIsolationLevel) -> Self {
+        Self::IsolationLevel(level)
     }
 }
 
