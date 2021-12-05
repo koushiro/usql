@@ -35,17 +35,6 @@ macro_rules! define_all_keywords {
                 ::core::fmt::Debug::fmt(self, f)
             }
         }
-
-        // /// All keywords
-        // pub const ALL_KEYWORDS_INDEX: &[Keyword] = &[
-        //     $(Keyword::$keyword),*
-        // ];
-        //
-        // $( $crate::kw_def!($keyword $(= $string_keyword)?); )*
-        // /// All reserved keywords string.
-        // pub const ALL_KEYWORDS_STRING: &[&str] = &[
-        //     $($keyword),*
-        // ];
     }
 }
 
@@ -72,12 +61,56 @@ macro_rules! define_keyword {
             $( $crate::kw_def!($keyword $(= $string_keyword)?); )*
 
             impl $crate::KeywordDef for $name {
-                const KEYWORDS_INDEX: &'static [$crate::Keyword] = &[
+                const KEYWORDS: &'static [$crate::Keyword] = &[
                     $($crate::Keyword::$keyword),*
                 ];
 
                 const KEYWORDS_STRING: &'static [&'static str] = &[
                     $($keyword),*
+                ];
+
+                const RESERVED_KEYWORDS: &'static [$crate::Keyword] = &[
+                    $($crate::Keyword::$keyword),*
+                ];
+            }
+        }
+    };
+
+    (
+        $(#[$doc:meta])*
+        $name:ident => {
+            $(
+                $keyword:ident $(= $string_keyword:expr)?
+            ),*
+        };
+        $reserved:ident => {
+            $( $reserved_keyword:ident ),*
+        }
+    ) => {
+        $(#[$doc])*
+        #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+        pub struct $name;
+
+        const _: () = {
+            struct $reserved;
+        };
+
+        mod __private {
+            use super::$name;
+
+            $( $crate::kw_def!($keyword $(= $string_keyword)?); )*
+
+            impl $crate::KeywordDef for $name {
+                const KEYWORDS: &'static [$crate::Keyword] = &[
+                    $($crate::Keyword::$keyword),*
+                ];
+
+                const KEYWORDS_STRING: &'static [&'static str] = &[
+                    $($keyword),*
+                ];
+
+                const RESERVED_KEYWORDS: &'static [$crate::Keyword] = &[
+                    $($crate::Keyword::$reserved_keyword),*
                 ];
             }
         }

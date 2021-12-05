@@ -5,6 +5,11 @@ define_keyword! {
         ABORT,
         ABS,
         ACCESSIBLE
+    };
+    MyReservedKeyword => {
+        ABORT,
+        ABS,
+        ACCESSIBLE
     }
 }
 
