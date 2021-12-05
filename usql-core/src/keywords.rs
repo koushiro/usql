@@ -6,10 +6,13 @@ where
     Self: Clone + PartialEq + Debug + 'static,
 {
     /// All sorted keywords for the definition.
-    const KEYWORDS_INDEX: &'static [Keyword];
+    const KEYWORDS: &'static [Keyword];
 
     /// All sorted keyword strings for the definition.
     const KEYWORDS_STRING: &'static [&'static str];
+
+    /// All sorted reserved keywords for the definition.
+    const RESERVED_KEYWORDS: &'static [Keyword];
 }
 
 define_all_keywords! {

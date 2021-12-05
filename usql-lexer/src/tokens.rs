@@ -59,13 +59,13 @@ pub enum Token {
     /// Not equal `<>` or `!=`
     NotEqual,
     /// Less than `<`
-    LessThan,
+    Less,
     /// Less than or equal `<=`
-    LessThanOrEqual,
+    LessOrEqual,
     /// Greater than `>`
-    GreaterThan,
+    Greater,
     /// Greater than or equal `>=`
-    GreaterThanOrEqual,
+    GreaterOrEqual,
 
     /// Left Shift `<<`
     LeftShift,
@@ -134,10 +134,10 @@ impl fmt::Display for Token {
             Token::RightBrace => f.write_str("}"),
             Token::Equal => f.write_str("="),
             Token::NotEqual => f.write_str("<>"),
-            Token::LessThan => f.write_str("<"),
-            Token::LessThanOrEqual => f.write_str("<="),
-            Token::GreaterThan => f.write_str(">"),
-            Token::GreaterThanOrEqual => f.write_str(">="),
+            Token::Less => f.write_str("<"),
+            Token::LessOrEqual => f.write_str("<="),
+            Token::Greater => f.write_str(">"),
+            Token::GreaterOrEqual => f.write_str(">="),
             Token::LeftShift => f.write_str("<<"),
             Token::RightShift => f.write_str(">>"),
             Token::Plus => f.write_str("+"),
@@ -169,7 +169,7 @@ impl Token {
         let keyword_uppercase = value.to_uppercase();
         let keyword = K::KEYWORDS_STRING
             .binary_search(&keyword_uppercase.as_str())
-            .map(|x| K::KEYWORDS_INDEX[x])
+            .map(|x| K::KEYWORDS[x])
             .ok();
         keyword.map(|kw| {
             Self::Word(Word {
@@ -189,7 +189,7 @@ impl Token {
                 let keyword_uppercase = value.to_uppercase();
                 K::KEYWORDS_STRING
                     .binary_search(&keyword_uppercase.as_str())
-                    .map(|x| K::KEYWORDS_INDEX[x])
+                    .map(|x| K::KEYWORDS[x])
                     .ok()
             } else {
                 None
@@ -210,6 +210,7 @@ impl Token {
     }
 
     /// Checks if the token is keyword.
+    #[inline]
     pub fn is_keyword(&self, keyword: Keyword) -> bool {
         matches!(self, Token::Word(w) if w.keyword == Some(keyword))
     }

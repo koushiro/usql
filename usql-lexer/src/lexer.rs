@@ -226,8 +226,8 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                 '}' => Token::RightBrace,
 
                 '=' => Token::Equal,
-                '<' => Token::LessThan,
-                '>' => Token::GreaterThan,
+                '<' => Token::Less,
+                '>' => Token::Greater,
 
                 '+' => Token::Plus,
                 '-' => Token::Minus,
@@ -250,11 +250,11 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         if let Some(token) = token {
             Ok(Some(match token {
                 Token::Colon if self.next_if_is(':') => Token::DoubleColon,
-                Token::LessThan if self.next_if_is('>') => Token::NotEqual,
-                Token::LessThan if self.next_if_is('=') => Token::LessThanOrEqual,
-                Token::LessThan if self.next_if_is('<') => Token::LeftShift,
-                Token::GreaterThan if self.next_if_is('=') => Token::GreaterThanOrEqual,
-                Token::GreaterThan if self.next_if_is('>') => Token::RightShift,
+                Token::Less if self.next_if_is('>') => Token::NotEqual,
+                Token::Less if self.next_if_is('=') => Token::LessOrEqual,
+                Token::Less if self.next_if_is('<') => Token::LeftShift,
+                Token::Greater if self.next_if_is('=') => Token::GreaterOrEqual,
+                Token::Greater if self.next_if_is('>') => Token::RightShift,
                 Token::Minus if self.next_if_is('-') => {
                     Token::Comment(self.tokenize_single_line_comment("--"))
                 }
