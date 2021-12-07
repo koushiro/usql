@@ -227,7 +227,7 @@ impl fmt::Display for SelectItem {
 /// <table value constructor> ::= VALUES <row value expression> [, ...]
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Values {
     /// The list of row value expression.
     pub list: Vec<Vec<Expr>>,

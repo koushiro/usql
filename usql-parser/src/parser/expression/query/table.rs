@@ -46,12 +46,8 @@ impl<'a, D: Dialect> Parser<'a, D> {
         let relation = self.parse_table_factor()?;
 
         let mut joins = vec![];
-        loop {
-            if let Some(join) = self.parse_joined_table()? {
-                joins.push(join);
-            } else {
-                break;
-            }
+        while let Some(join) = self.parse_joined_table()? {
+            joins.push(join);
         }
         Ok(TableReference { relation, joins })
     }
@@ -695,7 +691,7 @@ mod tests {
             Parser::new_with_sql(&dialect, "LEFT OUTER JOIN table1 t1 ON t1.id = t2.id")?
                 .parse_joined_table()?,
             Some(Join {
-                join: JoinOperator::LeftOuterJoin(join_spec1.clone()),
+                join: JoinOperator::LeftOuterJoin(join_spec1),
                 relation: relation.clone(),
             })
         );
@@ -711,8 +707,8 @@ mod tests {
             Parser::new_with_sql(&dialect, "FULL OUTER JOIN table1 t1 USING (id)")?
                 .parse_joined_table()?,
             Some(Join {
-                join: JoinOperator::FullOuterJoin(join_spec2.clone()),
-                relation: relation.clone(),
+                join: JoinOperator::FullOuterJoin(join_spec2),
+                relation,
             })
         );
         Ok(())
