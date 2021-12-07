@@ -1,6 +1,7 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 
-fn parse(c: &mut Criterion) {
+fn parse(_c: &mut Criterion) {
+    /*
     let mut group = c.benchmark_group("parse");
 
     let query = "SELECT * FROM table1 WHERE id = 1";
@@ -49,6 +50,7 @@ fn parse(c: &mut Criterion) {
             let _stmt = black_box(Parser::new_with_tokens(&dialect, tokens.clone()).parse_select_stmt().unwrap());
         });
     });
+    */
 }
 
 criterion_group!(benches, parse);
