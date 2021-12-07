@@ -137,9 +137,12 @@ pub struct QuerySpec {
     /// projection expressions
     pub projection: Vec<SelectItem>,
 
-    // <table expression>::= <from clause> [ <where clause> ] [ <group by clause> ] [ <having clause> ] [ <window clause> ]
+    // <table expression>::= [ <from clause> ] [ <where clause> ] [ <group by clause> ] [ <having clause> ] [ <window clause> ]
     /// `FROM` clause
-    pub from: From,
+    ///
+    /// NOTE: ANSI SQL table expression must contain <from clause>,
+    /// but for most dialects, <from clause> is optional.
+    pub from: Option<From>,
     /// `WHERE` clause
     pub r#where: Option<Where>,
     /// `GROUP BY` clause
@@ -159,7 +162,9 @@ impl fmt::Display for QuerySpec {
         write!(f, " {}", display_comma_separated(&self.projection))?;
 
         // table expression
-        write!(f, " {}", self.from)?;
+        if let Some(from) = &self.from {
+            write!(f, " {}", from)?;
+        }
         if let Some(r#where) = &self.r#where {
             write!(f, " {}", r#where)?;
         }

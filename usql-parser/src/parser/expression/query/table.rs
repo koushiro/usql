@@ -18,10 +18,13 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// <from clause> ::= FROM <table reference list>
     /// <table reference list> ::= <table reference> [, ...]
     /// ```
-    pub fn parse_from_clause(&mut self) -> Result<From, ParserError> {
-        self.expect_keyword(Keyword::FROM)?;
-        let list = self.parse_comma_separated(Self::parse_table_reference)?;
-        Ok(From { list })
+    pub fn parse_from_clause(&mut self) -> Result<Option<From>, ParserError> {
+        if self.parse_keyword(Keyword::FROM) {
+            let list = self.parse_comma_separated(Self::parse_table_reference)?;
+            Ok(Some(From { list }))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Parses a table reference.
@@ -540,7 +543,72 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_from_clause() -> Result<(), ParserError> {
+    fn parse_table_factor() -> Result<(), ParserError> {
+        let dialect = usql_core::ansi::AnsiDialect::default();
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "table1")?.parse_table_factor()?,
+            TableFactor::Table {
+                name: ObjectName::new(vec!["table1"]),
+                alias: None,
+            }
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "table1 AS t1 (id1, id2)")?.parse_table_factor()?,
+            TableFactor::Table {
+                name: ObjectName::new(vec!["table1"]),
+                alias: Some(TableAlias {
+                    name: Ident::new("t1"),
+                    columns: Some(vec![Ident::new("id1"), Ident::new("id2")]),
+                }),
+            }
+        );
+        assert_eq!(
+            Parser::new_with_sql(
+                &dialect,
+                "LATERAL (SELECT id1, id2 from table1) AS t1 (id1, id2)"
+            )?
+            .parse_table_factor()?,
+            TableFactor::Derived {
+                lateral: true,
+                subquery: Box::new(Query {
+                    with: None,
+                    body: QueryBody::QuerySpec(Box::new(QuerySpec {
+                        quantifier: None,
+                        projection: vec![
+                            SelectItem::DerivedColumn {
+                                expr: Box::new(Expr::Identifier(Ident::new("id1"))),
+                                alias: None,
+                            },
+                            SelectItem::DerivedColumn {
+                                expr: Box::new(Expr::Identifier(Ident::new("id2"))),
+                                alias: None,
+                            },
+                        ],
+                        from: Some(From {
+                            list: vec![TableReference {
+                                relation: TableFactor::Table {
+                                    name: ObjectName::new(vec!["table1"]),
+                                    alias: None,
+                                },
+                                joins: vec![],
+                            },]
+                        }),
+                        r#where: None,
+                        group_by: None,
+                        having: None,
+                        window: None,
+                    })),
+                    order_by: None,
+                    offset: None,
+                    limit: None,
+                    fetch: None,
+                }),
+                alias: Some(TableAlias {
+                    name: Ident::new("t1"),
+                    columns: Some(vec![Ident::new("id1"), Ident::new("id2"),]),
+                }),
+            }
+        );
         Ok(())
     }
 
@@ -647,11 +715,6 @@ mod tests {
                 relation: relation.clone(),
             })
         );
-        Ok(())
-    }
-
-    #[test]
-    fn parse_table_factor() -> Result<(), ParserError> {
         Ok(())
     }
 

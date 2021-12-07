@@ -78,11 +78,11 @@ impl<'a, D: Dialect> Parser<'a, D> {
     ///     | <query expression body> INTERSECT [ ALL | DISTINCT] <query expression body>
     ///
     /// <query term> ::= <query primary> | <query term> INTERSECT [ ALL | DISTINCT] <query primary>
-    /// <query primary> ::= <simple table> | no-with-clause query expression
+    /// <query primary> ::= <simple table> | ( <no-with-clause query expression> )
     ///
     /// <simple table> ::= <query specification> | <table value constructor> | <explicit table>
-    /// <table value constructor> ::= VALUES <row value expression> [, ...]
-    /// <explicit table> ::= TABLE <table or query name>
+    /// <table value constructor> ::= VALUES <table row value expression> [, ...]
+    /// <explicit table> ::= TABLE <table name>
     /// ```
     fn parse_query_body(&mut self, precedence: u8) -> Result<QueryBody, ParserError> {
         let mut body = match self.peek_token().cloned() {
@@ -92,14 +92,14 @@ impl<'a, D: Dialect> Parser<'a, D> {
             }
             Some(token) if token == Token::LeftParen => {
                 // with clause are not allowed here
-                self.next_token();
+                self.next_token(); // consume the `(`
                 let subquery = self.parse_query_expr(true)?;
                 self.expect_token(&Token::RightParen)?;
                 QueryBody::Subquery(Box::new(subquery))
             }
             Some(token) if token.is_keyword(Keyword::VALUES) => {
-                let list = Default::default();
-                QueryBody::Values(Values { list })
+                let values = self.parse_table_values()?;
+                QueryBody::Values(values)
             }
             Some(token) if token.is_keyword(Keyword::TABLE) => {
                 self.next_token(); // consume the keyword `TABLE`
@@ -230,6 +230,35 @@ impl<'a, D: Dialect> Parser<'a, D> {
                 })
             }
         }
+    }
+
+    /// Parses a table value constructor.
+    ///
+    /// ```txt
+    /// <table value constructor> ::= VALUES <row value expression list>
+    /// <row value expression list> ::= <table row value expression> [, ...]
+    /// ```
+    pub fn parse_table_values(&mut self) -> Result<Values, ParserError> {
+        self.expect_keyword(Keyword::VALUES)?;
+        let list = self.parse_comma_separated(Self::parse_table_row_value)?;
+        Ok(Values { list })
+    }
+
+    /// Parses a table row value expression.
+    ///
+    /// ```txt
+    /// <table row value expression> ::= <row value special case> | <row value constructor>
+    ///
+    /// <row value constructor> ::=  <common value expression> | <boolean value expression> | <explicit row value constructor>
+    ///
+    /// <explicit row value constructor> ::= [ ROW ] ( <value expression> [, ...] ) | ( <query expression> )
+    /// ```
+    pub fn parse_table_row_value(&mut self) -> Result<Vec<Expr>, ParserError> {
+        self.parse_keyword(Keyword::ROW);
+        self.expect_token(&Token::LeftParen)?;
+        let exprs = self.parse_comma_separated(Self::parse_expr)?;
+        self.expect_token(&Token::RightParen)?;
+        Ok(exprs)
     }
 
     // ========================================================================
@@ -430,12 +459,51 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_query() -> Result<(), ParserError> {
-        Ok(())
-    }
-
-    #[test]
     fn parse_query_body() -> Result<(), ParserError> {
+        let dialect = usql_core::ansi::AnsiDialect::default();
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "SELECT 1")?.parse_query_body(0)?,
+            QueryBody::QuerySpec(Box::new(QuerySpec {
+                quantifier: None,
+                projection: vec![SelectItem::DerivedColumn {
+                    expr: Box::new(Expr::Literal(Literal::Number("1".into()))),
+                    alias: None,
+                }],
+                from: None,
+                r#where: None,
+                group_by: None,
+                having: None,
+                window: None
+            }))
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "VALUES ROW(1, 2), ROW(3, 4)")?.parse_query_body(0)?,
+            QueryBody::Values(Values {
+                list: vec![
+                    vec![
+                        Expr::Literal(Literal::Number("1".into())),
+                        Expr::Literal(Literal::Number("2".into()))
+                    ],
+                    vec![
+                        Expr::Literal(Literal::Number("3".into())),
+                        Expr::Literal(Literal::Number("4".into()))
+                    ],
+                ]
+            })
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "TABLE a.b.c")?.parse_query_body(0)?,
+            QueryBody::Table(ObjectName::new(vec!["a", "b", "c"]))
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "TABLE a.b.c UNION TABLE x.y.z")?.parse_query_body(0)?,
+            QueryBody::Operation {
+                left: Box::new(QueryBody::Table(ObjectName::new(vec!["a", "b", "c"]))),
+                quantifier: None,
+                op: QueryBodyOperator::Union,
+                right: Box::new(QueryBody::Table(ObjectName::new(vec!["x", "y", "z"]))),
+            }
+        );
         Ok(())
     }
 
@@ -456,7 +524,7 @@ mod tests {
                         alias: None,
                     },
                 ],
-                from: From {
+                from: Some(From {
                     list: vec![TableReference {
                         relation: TableFactor::Table {
                             name: ObjectName::new(vec!["table1"]),
@@ -464,7 +532,7 @@ mod tests {
                         },
                         joins: vec![],
                     }],
-                },
+                }),
                 r#where: None,
                 group_by: None,
                 having: None,
@@ -476,40 +544,33 @@ mod tests {
             fetch: None,
         });
         let sql = "x AS (SELECT id1, id2 FROM table1)";
-        let cte = Parser::new_with_sql(&dialect, sql)?.parse_cte()?;
-        assert_eq!(cte.name, Ident::new("x"));
-        assert_eq!(cte.columns, None);
-        // assert_eq!(
-        //     Parser::new_with_sql(&dialect, sql)?.parse_cte()?,
-        //     Cte {
-        //         name: Ident::new("x"),
-        //         columns: None,
-        //         query: query.clone(),
-        //     },
-        // );
-        // let sql = "WITH RECURSIVE x AS (SELECT id1, id2 FROM table1), y (col1, col2) AS (SELECT id1, id2 FROM table1)";
-        // assert_eq!(
-        //     Parser::new_with_sql(&dialect, sql)?.parse_with_clause()?,
-        //     Some(With {
-        //         recursive: true,
-        //         ctes: vec![
-        //             Cte {
-        //                 alias: TableAlias {
-        //                     name: Ident::new("x"),
-        //                     columns: None,
-        //                 },
-        //                 query: query.clone(),
-        //             },
-        //             Cte {
-        //                 alias: TableAlias {
-        //                     name: Ident::new("y"),
-        //                     columns: Some(vec![Ident::new("col1"), Ident::new("col2")]),
-        //                 },
-        //                 query,
-        //             },
-        //         ]
-        //     })
-        // );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, sql)?.parse_cte()?,
+            Cte {
+                name: Ident::new("x"),
+                columns: None,
+                query: query.clone(),
+            },
+        );
+        let sql = "WITH RECURSIVE x AS (SELECT id1, id2 FROM table1), y (col1, col2) AS (SELECT id1, id2 FROM table1)";
+        assert_eq!(
+            Parser::new_with_sql(&dialect, sql)?.parse_with_clause()?,
+            Some(With {
+                recursive: true,
+                ctes: vec![
+                    Cte {
+                        name: Ident::new("x"),
+                        columns: None,
+                        query: query.clone(),
+                    },
+                    Cte {
+                        name: Ident::new("y"),
+                        columns: Some(vec![Ident::new("col1"), Ident::new("col2")]),
+                        query,
+                    },
+                ]
+            })
+        );
         Ok(())
     }
 
