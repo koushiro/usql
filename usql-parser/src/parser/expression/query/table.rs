@@ -16,7 +16,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
     ///
     /// ```txt
     /// <from clause> ::= FROM <table reference list>
-    /// <table reference list> ::= <table reference> [ { , <table reference> }... ]
+    /// <table reference list> ::= <table reference> [, ...]
     /// ```
     pub fn parse_from_clause(&mut self) -> Result<From, ParserError> {
         self.expect_keyword(Keyword::FROM)?;
@@ -58,8 +58,8 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// ```txt
     /// <table factor> ::= <table or query name> | [ LATERAL ] <derived table> | <parenthesized joined table>
     ///
-    /// <table or query name> ::= <name> [ [ AS ] <alias name> [ ( column [, ... ] ) ] ]
-    /// <derived table> ::= ( <query expression> ) [ AS ] <alias name> [ ( column [, ... ] ) ]
+    /// <table or query name> ::= <name> [ [ AS ] <alias name> [ ( <column name> [, ... ] ) ] ]
+    /// <derived table> ::= ( <query expression> ) [ AS ] <alias name> [ ( <column name> [, ... ] ) ]
     /// ```
     pub fn parse_table_factor(&mut self) -> Result<TableFactor, ParserError> {
         // [ LATERAL ] <derived table>
@@ -70,7 +70,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
             self.parse_derived_table_factor(false)
             // TODO: support nested join
         } else {
-            // <name> [ [ AS ] <alias name> [ ( column [, ... ] ) ] ]
+            // <name> [ [ AS ] <alias name> [ ( <column name> [, ...] ) ] ]
             let name = self.parse_object_name()?;
             let alias = self.parse_table_alias(true)?;
             Ok(TableFactor::Table { name, alias })
@@ -78,7 +78,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
     }
 
     fn parse_derived_table_factor(&mut self, lateral: bool) -> Result<TableFactor, ParserError> {
-        // ( <no-with-clause query expression> ) [ AS ] <alias name> [ ( column [, ... ] ) ]
+        // ( <no-with-clause query expression> ) [ AS ] <alias name> [ ( <column name> [, ...] ) ]
         self.expect_token(&Token::LeftParen)?;
         let subquery = Box::new(self.parse_query_expr(true)?);
         self.expect_token(&Token::RightParen)?;
@@ -93,7 +93,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// Parses an optional table alias.
     ///
     /// ```txt
-    /// <table alias> ::= [ AS ] <alias name> [ ( column [, ... ] ) ]
+    /// <table alias> ::= [ AS ] <alias name> [ ( <column name> [, ...] ) ]
     /// ```
     pub fn parse_table_alias(&mut self, optional: bool) -> Result<Option<TableAlias>, ParserError> {
         if self.parse_keyword(Keyword::AS) {
@@ -122,6 +122,9 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// <cross join> ::= <table reference> CROSS JOIN <table factor>
     /// <natural join> ::= <table reference> NATURAL [ <join type>  ] JOIN <table factor>
     /// <qualified join> ::= <table reference> [ <join type>  ] JOIN <table reference> <join specification>
+    ///
+    /// <join type> ::= INNER | { LEFT | RIGHT | FULL  [ OUTER ] }
+    /// <join specification> ::= ON <search condition> | USING ( <column name> [, ...] )
     /// ```
     pub fn parse_joined_table(&mut self) -> Result<Option<Join>, ParserError> {
         if self.parse_keyword(Keyword::CROSS) {
@@ -206,7 +209,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// ```txt
     /// <join specification> ::= <join condition> | <named columns join>
     /// <join condition> ::= ON <search condition>
-    /// <named columns join> ::= USING ( <join column list> )  [ AS <join correlation name>  ]
+    /// <named columns join> ::= USING ( <join column> [, ...] ) [ AS <join correlation name> ]
     /// ```
     pub fn parse_join_spec(&mut self) -> Result<JoinSpec, ParserError> {
         if self.parse_keyword(Keyword::ON) {
@@ -253,7 +256,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// Parses a `GROUP BY` clause.
     ///
     /// ```txt
-    /// <group by clause> ::= GROUP BY [ DISTINCT | ALL ] <group element> [ , ... ]
+    /// <group by clause> ::= GROUP BY [ DISTINCT | ALL ] <group element> [, ...]
     /// ```
     pub fn parse_group_by_clause(&mut self) -> Result<Option<GroupBy>, ParserError> {
         if self.parse_keywords(&[Keyword::GROUP, Keyword::BY]) {
@@ -276,10 +279,10 @@ impl<'a, D: Dialect> Parser<'a, D> {
     ///   | <grouping sets specification>
     ///
     /// <empty grouping set> ::= ( )
-    /// <ordinary grouping set> ::= column | ( column [, ...] )
-    /// <rollup list> ::= ROLLUP ( { column | ( column [, ...] ) } [, ...] )
-    /// <cube list> ::= CUBE  ( { column | ( column [, ...] ) } [, ...] )
-    /// <grouping sets specification> ::= GROUPING SETS ( grouping_element [, ...] )
+    /// <ordinary grouping set> ::= <column name> | ( <column name> [, ...] )
+    /// <rollup list> ::= ROLLUP ( { <column name> | ( <column name> [, ...] ) } [, ...] )
+    /// <cube list> ::= CUBE  ( { <column name> | ( <column name> [, ...] ) } [, ...] )
+    /// <grouping sets specification> ::= GROUPING SETS ( <grouping element> [, ...] )
     /// ```
     pub fn parse_grouping_element(&mut self) -> Result<GroupingElement, ParserError> {
         if self.parse_keyword(Keyword::ROLLUP) {
@@ -345,7 +348,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// Parses a `WINDOW` clause.
     ///
     /// ```txt
-    /// <window clause> ::= WINDOW <window definition> [ { , <window definition> }... ]
+    /// <window clause> ::= WINDOW <window definition> [, ...]
     /// ```
     pub fn parse_window_clause(&mut self) -> Result<Option<Window>, ParserError> {
         if self.parse_keyword(Keyword::WINDOW) {
@@ -380,7 +383,8 @@ impl<'a, D: Dialect> Parser<'a, D> {
     ///     [ <window partition clause> ]
     ///     [ <window order clause> ]
     ///     [ <window frame clause> ]
-    /// <window partition clause> ::= PARTITION BY <window partition column> [ { , <window partition column> }... ]
+    ///
+    /// <window partition clause> ::= PARTITION BY <window partition column> [, ...]
     /// <window order clause> ::= ORDER BY { <sort_key> [ ASC | DESC ] [ NULLS FIRST | NULLS LAST ] } [, ...]`
     /// ```
     pub fn parse_window_spec(&mut self) -> Result<WindowSpec, ParserError> {
@@ -402,6 +406,10 @@ impl<'a, D: Dialect> Parser<'a, D> {
     }
 
     /// Parses a window partition clause.
+    ///
+    /// ```txt
+    /// <window partition clause> ::= PARTITION BY <window partition column> [, ...]
+    /// ```
     pub fn parse_window_partition_clause(
         &mut self,
     ) -> Result<Option<Vec<ObjectName>>, ParserError> {

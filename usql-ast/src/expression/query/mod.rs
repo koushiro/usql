@@ -13,7 +13,9 @@ use crate::{expression::*, types::*, utils::display_comma_separated};
 ///
 /// ```txt
 /// <query expression> ::= [ <with clause> ] <query expression body>
-///     [ <order by clause> ] [ <result offset clause> ] [ <fetch first clause> ]
+///     [ <order by clause> ]
+///     [ <result offset clause> ]
+///     [ <fetch first clause> | <limit clause> ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -26,10 +28,10 @@ pub struct Query {
     pub order_by: Option<OrderBy>,
     /// `OFFSET <N> [ { ROW | ROWS } ]`
     pub offset: Option<Offset>,
-    /// `LIMIT { <N> | ALL }`
-    pub limit: Option<Limit>,
     /// `FETCH { FIRST | NEXT } <N> [ PERCENT ] { ROW | ROWS } | { ONLY | WITH TIES }`
     pub fetch: Option<Fetch>,
+    /// `LIMIT { <N> | ALL }`
+    pub limit: Option<Limit>,
 }
 
 impl fmt::Display for Query {
@@ -41,14 +43,14 @@ impl fmt::Display for Query {
         if let Some(order_by) = &self.order_by {
             write!(f, " {}", order_by)?;
         }
-        if let Some(limit) = &self.limit {
-            write!(f, " {}", limit)?;
-        }
         if let Some(offset) = &self.offset {
             write!(f, " {}", offset)?;
         }
         if let Some(fetch) = &self.fetch {
             write!(f, " {}", fetch)?;
+        }
+        if let Some(limit) = &self.limit {
+            write!(f, " {}", limit)?;
         }
         Ok(())
     }
@@ -66,7 +68,7 @@ impl fmt::Display for Query {
 /// <query primary> ::= <simple table> | no-with-clause query expression
 ///
 /// <simple table> ::= <query specification> | <table value constructor> | <explicit table>
-/// <table value constructor> ::= VALUES <row value expression> [ { , <row value expression> }... ]
+/// <table value constructor> ::= VALUES <row value expression> [, ...]
 /// <explicit table> ::= TABLE <table or query name>
 /// ```
 #[doc(hidden)]
@@ -113,10 +115,111 @@ impl fmt::Display for QueryBody {
     }
 }
 
+/// The query specification, which is a restricted variant of `SELECT` statement
+/// (without `WITH`/`ORDER BY`/`LIMIT`/`OFFSET`/`FETCH` clause), which may appear
+/// either as the only body item of an `Query`, or as an operand to a set
+/// operation like `UNION`.
+///
+/// ```txt
+/// <query specification> ::= SELECT [ ALL | DISTINCT ] <select list> <table expression>
+///
+/// <table expression> ::= <from clause>
+///     [ <where clause> ]
+///     [ <group by clause> ]
+///     [ <having clause> ]
+///     [ <window clause> ]
+/// ```
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct QuerySpec {
+    /// Set quantifier, `ALL` or `DISTINCT`
+    pub quantifier: Option<SetQuantifier>,
+    /// projection expressions
+    pub projection: Vec<SelectItem>,
+
+    // <table expression>::= <from clause> [ <where clause> ] [ <group by clause> ] [ <having clause> ] [ <window clause> ]
+    /// `FROM` clause
+    pub from: From,
+    /// `WHERE` clause
+    pub r#where: Option<Where>,
+    /// `GROUP BY` clause
+    pub group_by: Option<GroupBy>,
+    /// `HAVING` clause
+    pub having: Option<Having>,
+    /// `WINDOW` clause
+    pub window: Option<Window>,
+}
+
+impl fmt::Display for QuerySpec {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("SELECT")?;
+        if let Some(quantifier) = &self.quantifier {
+            write!(f, " {}", quantifier)?;
+        }
+        write!(f, " {}", display_comma_separated(&self.projection))?;
+
+        // table expression
+        write!(f, " {}", self.from)?;
+        if let Some(r#where) = &self.r#where {
+            write!(f, " {}", r#where)?;
+        }
+        if let Some(group_by) = &self.group_by {
+            write!(f, " {}", group_by)?;
+        }
+        if let Some(having) = &self.having {
+            write!(f, " {}", having)?;
+        }
+        if let Some(window) = &self.window {
+            write!(f, " {}", window)?;
+        }
+        Ok(())
+    }
+}
+
+/// One item of the comma-separated list following `SELECT`.
+///
+/// ```txt
+/// <select list> ::= * | <select sublist>  [, ...]
+///
+/// <select sublist> ::= <qualified asterisk> | <derived column>
+/// <qualified asterisk> ::= <ident> [. ...] .*
+/// <derived column> ::= <expression> [ AS <column name> ]
+/// ```
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum SelectItem {
+    /// An unqualified `*`
+    Wildcard,
+    /// `alias.*` or even `schema.table.*`
+    QualifiedWildcard(ObjectName),
+    /// An expression, maybe followed by `[ AS ] alias`
+    #[doc(hidden)]
+    DerivedColumn {
+        expr: Box<Expr>,
+        alias: Option<Ident>,
+    },
+}
+
+impl fmt::Display for SelectItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SelectItem::Wildcard => write!(f, "*"),
+            SelectItem::QualifiedWildcard(prefix) => write!(f, "{}.*", prefix),
+            SelectItem::DerivedColumn { expr, alias } => {
+                if let Some(alias) = alias {
+                    write!(f, "{} AS {}", expr, alias)
+                } else {
+                    write!(f, "{}", expr)
+                }
+            }
+        }
+    }
+}
+
 /// The values list, which provides a way to generate a “constant table” that can be used in a query.
 ///
 /// ```txt
-/// <table value constructor> ::= VALUES <row value expression> [ { , <row value expression> }... ]
+/// <table value constructor> ::= VALUES <row value expression> [, ...]
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -184,8 +287,8 @@ impl fmt::Display for SetQuantifier {
 ///
 /// ```txt
 /// <with clause> ::= WITH [ RECURSIVE ] <with list>
-/// <with list> ::= <with list element> [ { , <with list element> }... ]
-/// <with list element> ::= <query name> [ ( <column list> ) ] AS ( <query expression> )
+/// <with list> ::= <with list element> [, ...]
+/// <with list element> ::= <query name> [ ( <column name> [, ...] ) ] AS ( <query expression> )
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -210,6 +313,10 @@ impl fmt::Display for With {
 /// A single CTE (used after `WITH`): `alias [(col1, col2, ...)] AS ( query )`.
 /// The names in the column list before `AS`, when specified, replace the names
 /// of the columns returned by the query.
+///
+/// ```txt
+/// <with list element> ::= <query name> [ ( <column name> [, ...] ) ] AS ( <query expression> )
+/// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -225,7 +332,13 @@ pub struct Cte {
 impl fmt::Display for Cte {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(columns) = &self.columns {
-            write!(f, "{} ({}) AS ({})", self.name, display_comma_separated(columns), self.query)
+            write!(
+                f,
+                "{} ({}) AS ({})",
+                self.name,
+                display_comma_separated(columns),
+                self.query
+            )
         } else {
             write!(f, "{} AS ({})", self.name, self.query)
         }
@@ -239,7 +352,7 @@ impl fmt::Display for Cte {
 /// `ORDER BY` clause.
 ///
 /// ```txt
-/// ORDER BY <sort specification>  [ { ,  <sort specification>  }... ]
+/// <order by clause> ::= ORDER BY <sort specification>  [, ...]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -257,7 +370,7 @@ impl fmt::Display for OrderBy {
 /// A sort specification.
 ///
 /// ```txt
-/// <sort key>  [ ASC | DESC  ] [ NULLS FIRST | NULLS LAST  ]
+/// <sort specification> ::= <sort key>  [ ASC | DESC  ] [ NULLS FIRST | NULLS LAST  ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -288,37 +401,13 @@ impl fmt::Display for SortSpec {
 }
 
 // ============================================================================
-// limit clause (Not ANSI SQL standard, but most dialects support it)
-// ============================================================================
-
-/// Limit clause.
-///
-/// NOTE: we don't support `LIMIT [ offset, ] row_count` syntax yet.
-///
-/// ```txt
-/// LIMIT <count>
-/// ```
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Limit {
-    /// The row count.
-    pub count: Literal,
-}
-
-impl fmt::Display for Limit {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "LIMIT {}", self.count)
-    }
-}
-
-// ============================================================================
 // result offset clause
 // ============================================================================
 
 /// Offset clause.
 ///
 /// ```txt
-/// OFFSET <count> [ { ROW | ROWS } ]
+/// <result offset clause> ::= OFFSET <count> [ ROW | ROWS ]
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -362,7 +451,8 @@ impl fmt::Display for OffsetRows {
 /// Fetch first clause.
 ///
 /// ```txt
-/// FETCH { FIRST | NEXT } <row> [ PERCENT ] { ROW | ROWS } | { ONLY | WITH TIES }
+/// <fetch first clause> ::= FETCH [ FIRST | NEXT ] <fetch first quantity> { ROW | ROWS } { ONLY | WITH TIES }
+/// <fetched first quantity> ::= <quantity> [ PERCENT ]
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -383,5 +473,29 @@ impl fmt::Display for Fetch {
         } else {
             write!(f, "FETCH FIRST ROWS {}", extension)
         }
+    }
+}
+
+// ============================================================================
+// limit clause (Not ANSI SQL standard, but most dialects support it)
+// ============================================================================
+
+/// Limit clause.
+///
+/// NOTE: we don't support `LIMIT [ offset, ] row_count` syntax yet.
+///
+/// ```txt
+/// <limit clause> ::= LIMIT <count>
+/// ```
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Limit {
+    /// The row count.
+    pub count: Literal,
+}
+
+impl fmt::Display for Limit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "LIMIT {}", self.count)
     }
 }

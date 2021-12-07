@@ -4,105 +4,6 @@ use core::fmt;
 
 use crate::{expression::*, types::*, utils::display_comma_separated};
 
-/// The query specification, which is a restricted variant of `SELECT` statement
-/// (without `WITH`/`ORDER BY`/`LIMIT`/`OFFSET`/`FETCH` clause), which may appear
-/// either as the only body item of an `Query`, or as an operand to a set
-/// operation like `UNION`.
-///
-/// ```txt
-/// <query specification> ::= SELECT [ ALL | DISTINCT ] <select list> <table expression>
-/// <select list> ::= * | <select sublist>  [ { ,  <select sublist>  }... ]
-/// <table expression> ::= <from clause>
-///     [ <where clause> ]
-///     [ <group by clause> ]
-///     [ <having clause> ]
-///     [ <window clause> ]
-/// ```
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct QuerySpec {
-    /// Set quantifier, `ALL` or `DISTINCT`
-    pub quantifier: Option<SetQuantifier>,
-    /// projection expressions
-    pub projection: Vec<SelectItem>,
-
-    // <table expression>::= <from clause> [ <where clause> ] [ <group by clause> ] [ <having clause> ] [ <window clause> ]
-    /// `FROM` clause
-    pub from: From,
-    /// `WHERE` clause
-    pub r#where: Option<Where>,
-    /// `GROUP BY` clause
-    pub group_by: Option<GroupBy>,
-    /// `HAVING` clause
-    pub having: Option<Having>,
-    /// `WINDOW` clause
-    pub window: Option<Window>,
-}
-
-impl fmt::Display for QuerySpec {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("SELECT")?;
-        if let Some(quantifier) = &self.quantifier {
-            write!(f, " {}", quantifier)?;
-        }
-        write!(f, " {}", display_comma_separated(&self.projection))?;
-
-        // table expression
-        write!(f, " {}", self.from)?;
-        if let Some(r#where) = &self.r#where {
-            write!(f, " {}", r#where)?;
-        }
-        if let Some(group_by) = &self.group_by {
-            write!(f, " {}", group_by)?;
-        }
-        if let Some(having) = &self.having {
-            write!(f, " {}", having)?;
-        }
-        if let Some(window) = &self.window {
-            write!(f, " {}", window)?;
-        }
-        Ok(())
-    }
-}
-
-/// One item of the comma-separated list following `SELECT`.
-///
-/// ```txt
-/// <select list> ::= * | <select sublist>  [ { ,  <select sublist>  }... ]
-/// <select sublist> ::= <qualified asterisk> | <derived column>
-/// <derived column> ::= <value expression>  [ AS <column name> ]
-/// ```
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum SelectItem {
-    /// An unqualified `*`
-    Wildcard,
-    /// `alias.*` or even `schema.table.*`
-    QualifiedWildcard(ObjectName),
-    /// An expression, maybe followed by `[ AS ] alias`
-    #[doc(hidden)]
-    DerivedColumn {
-        expr: Box<Expr>,
-        alias: Option<Ident>,
-    },
-}
-
-impl fmt::Display for SelectItem {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            SelectItem::Wildcard => write!(f, "*"),
-            SelectItem::QualifiedWildcard(prefix) => write!(f, "{}.*", prefix),
-            SelectItem::DerivedColumn { expr, alias } => {
-                if let Some(alias) = alias {
-                    write!(f, "{} AS {}", expr, alias)
-                } else {
-                    write!(f, "{}", expr)
-                }
-            }
-        }
-    }
-}
-
 // ============================================================================
 // from clause
 // ============================================================================
@@ -111,7 +12,7 @@ impl fmt::Display for SelectItem {
 ///
 /// ```txt
 /// <from clause> ::= FROM <table reference list>
-/// <table reference list> ::= <table reference> [ , ... ]
+/// <table reference list> ::= <table reference> [, ...]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -166,7 +67,10 @@ impl fmt::Display for TableReference {
 /// A table name or a parenthesized subquery with an optional alias
 ///
 /// ```txt
-/// <table factor> ::= <table or query name> | <derived table> | <parenthesized joined table>
+/// <table factor> ::= <table or query name> | [ LATERAL ] <derived table> | <parenthesized joined table>
+///
+/// <table or query name> ::= <name> [ [ AS ] <alias name> [ ( column [, ...] ) ] ]
+/// <derived table> ::= ( <query expression> ) [ AS ] <alias name> [ ( column [, ...] ) ]
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -180,7 +84,7 @@ pub enum TableFactor {
     Derived {
         lateral: bool,
         subquery: Box<Query>,
-        alias: Option<TableAlias>,
+        alias: Option<TableAlias>, // must be some
     },
     /// Represents a parenthesized joined table.
     /// The SQL spec only allows a join expression
@@ -204,7 +108,7 @@ impl fmt::Display for TableFactor {
                 alias,
             } => {
                 if *lateral {
-                    write!(f, "LATERAL ")?;
+                    f.write_str("LATERAL ")?;
                 }
                 write!(f, "({})", subquery)?;
                 if let Some(alias) = alias {
@@ -220,7 +124,7 @@ impl fmt::Display for TableFactor {
 /// Table alias.
 ///
 /// ```txt
-/// <table alias> ::= AS <alias name> ( <columns> )
+/// <table alias> ::= [ AS ] <alias name> [ ( <column name> [, ...] ) ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -308,7 +212,7 @@ pub enum JoinOperator {
 /// ```txt
 /// <join specification> ::= <join condition> | <named columns join>
 /// <join condition> ::= ON <search condition>
-/// <named columns join> ::= USING ( <join column list> )  [ AS <join correlation name>  ]
+/// <named columns join> ::= USING ( <join column> [, ...] ) [ AS <join correlation name> ]
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -372,7 +276,7 @@ impl fmt::Display for Where {
 /// Group by clause.
 ///
 /// ```txt
-/// <group by clause> ::= GROUP BY [ DISTINCT | ALL ] <group element> [ { , <group element> }... ]
+/// <group by clause> ::= GROUP BY [ DISTINCT | ALL ] <group element> [, ...]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -404,10 +308,10 @@ impl fmt::Display for GroupBy {
 ///   | <grouping sets specification>
 ///
 /// <empty grouping set> ::= ( )
-/// <ordinary grouping set> ::= column | ( column [, ...] )
-/// <rollup list> ::= ROLLUP ( { column | ( column [, ...] ) } [, ...] )
-/// <cube list> ::= CUBE  ( { column | ( column [, ...] ) } [, ...] )
-/// <grouping sets specification> ::= GROUPING SETS ( grouping_element [, ...] )
+/// <ordinary grouping set> ::= <column name> | ( <column name> [, ...] )
+/// <rollup list> ::= ROLLUP ( { <column name> | ( <column name> [, ...] ) } [, ...] )
+/// <cube list> ::= CUBE  ( { <column name> | ( <column name> [, ...] ) } [, ...] )
+/// <grouping sets specification> ::= GROUPING SETS ( <grouping element> [, ...] )
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -482,7 +386,7 @@ impl fmt::Display for Having {
 /// Window clause.
 ///
 /// ```txt
-/// <window clause> ::= WINDOW <window definition> [ { , <window definition> }... ]
+/// <window clause> ::= WINDOW <window definition> [, ...]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -522,8 +426,13 @@ impl fmt::Display for WindowDef {
 ///
 /// ```txt
 /// <window specification> ::= ( <window specification details> )
-/// <window specification details> ::= ( [<existing window name>] [ <window partition clause> ] [ <window order clause> ] [ <window frame clause> ] )
-/// <window partition clause> ::= PARTITION BY <window partition column> [ { , <window partition column> }... ]
+/// <window specification details> ::=
+///     [ <existing window name> ]
+///     [ <window partition clause> ]
+///     [ <window order clause> ]
+///     [ <window frame clause> ]
+///
+/// <window partition clause> ::= PARTITION BY <window partition column> [, ...]
 /// <window order clause> ::= ORDER BY { <sort_key> [ ASC | DESC ] [ NULLS FIRST | NULLS LAST ] } [, ...]`
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -564,10 +473,20 @@ impl fmt::Display for WindowSpec {
     }
 }
 
-/// Specifies the data processed by a window function, e.g.
-/// `RANGE UNBOUNDED PRECEDING` or `ROWS BETWEEN 5 PRECEDING AND CURRENT ROW`.
+/// Window frame clause.
 ///
-/// See https://www.sqlite.org/windowfunctions.html#frame_specifications for details.
+/// ```txt
+/// <window frame clause> ::= <window frame units> <window frame extent> [ <window frame exclusion> ]
+///
+/// <window frame units> ::= ROWS | RANGE | GROUPS
+///
+/// <window frame extent> ::=  <window frame start> | <window frame between>
+/// <window frame between> ::= BETWEEN <window frame bound>  AND <window frame bound>
+/// <window frame bound> ::=  <window frame start> | UNBOUNDED FOLLOWING | <unsigned integer> FOLLOWING
+/// <window frame start> ::= CURRENT ROW | UNBOUNDED PRECEDING | <unsigned integer> PRECEDING
+///
+/// <window frame exclusion> ::= EXCLUDE CURRENT ROW | EXCLUDE GROUP | EXCLUDE TIES | EXCLUDE NO OTHERS
+/// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct WindowFrame {
@@ -603,6 +522,10 @@ impl fmt::Display for WindowFrame {
 }
 
 /// The type of relationship between the current row and frame rows.
+///
+/// ```txt
+/// <window frame units> ::= ROWS | RANGE | GROUPS
+/// ```
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -623,6 +546,11 @@ impl fmt::Display for WindowFrameUnits {
 }
 
 /// Specifies [WindowFrame]'s `start_bound` and `end_bound`
+///
+/// ```txt
+/// <window frame bound> ::=  <window frame start> | UNBOUNDED FOLLOWING | <unsigned integer> FOLLOWING
+/// <window frame start> ::= CURRENT ROW | UNBOUNDED PRECEDING | <unsigned integer> PRECEDING
+/// ```
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum WindowFrameBound {
@@ -647,6 +575,10 @@ impl fmt::Display for WindowFrameBound {
 }
 
 /// The exclude clause of window frame.
+///
+/// ```txt
+/// <window frame exclusion> ::= EXCLUDE CURRENT ROW | EXCLUDE GROUP | EXCLUDE TIES | EXCLUDE NO OTHERS
+/// ```
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

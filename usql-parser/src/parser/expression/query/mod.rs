@@ -16,7 +16,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// <query expression> ::= [ <with clause> ] <query expression body>
     ///     [ <order by clause> ]
     ///     [ <result offset clause> ]
-    ///     [ <limit clause> | <fetch first clause> ]
+    ///     [ <fetch first clause> | <limit clause> ]
     /// ```
     pub fn parse_query_expr(&mut self, skip_with: bool) -> Result<Query, ParserError> {
         let with = if skip_with { None } else { self.parse_with_clause()? };
@@ -24,8 +24,8 @@ impl<'a, D: Dialect> Parser<'a, D> {
         let order_by = self.parse_order_by_clause()?;
 
         let mut offset = None;
-        let mut limit = None;
         let mut fetch = None;
+        let mut limit = None;
         loop {
             let token = self.peek_token().cloned();
             match token {
@@ -60,8 +60,8 @@ impl<'a, D: Dialect> Parser<'a, D> {
             body,
             order_by,
             offset,
-            limit,
             fetch,
+            limit,
         })
     }
 
@@ -81,7 +81,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// <query primary> ::= <simple table> | no-with-clause query expression
     ///
     /// <simple table> ::= <query specification> | <table value constructor> | <explicit table>
-    /// <table value constructor> ::= VALUES <row value expression> [ , ... ]
+    /// <table value constructor> ::= VALUES <row value expression> [, ...]
     /// <explicit table> ::= TABLE <table or query name>
     /// ```
     fn parse_query_body(&mut self, precedence: u8) -> Result<QueryBody, ParserError> {
@@ -184,6 +184,10 @@ impl<'a, D: Dialect> Parser<'a, D> {
     }
 
     /// Parses a set quantifier.
+    ///
+    /// ```txt
+    /// <set quantifier> ::= ALL | DISTINCT
+    /// ```
     pub fn parse_set_quantifier(&mut self) -> Option<SetQuantifier> {
         match self.peek_token() {
             Some(token) if token.is_keyword(Keyword::ALL) => {
@@ -201,10 +205,10 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// Parses one item of select list.
     ///
     /// ```txt
-    /// <select list> ::= * | <select sublist>  [ , ... ]
+    /// <select list> ::= * | <select sublist>  [, ...]
     ///
     /// <select sublist> ::= <qualified asterisk> | <derived column>
-    /// <qualified asterisk> ::= <ident> [ . ... ] .*
+    /// <qualified asterisk> ::= <ident> [. ...] .*
     /// <derived column> ::= <expression> [ AS <column name> ]
     /// ```
     pub fn parse_select_item(&mut self) -> Result<SelectItem, ParserError> {
@@ -236,8 +240,8 @@ impl<'a, D: Dialect> Parser<'a, D> {
     ///
     /// ```txt
     /// <with clause> ::= WITH [ RECURSIVE ] <with list>
-    /// <with list> ::= <with list element> [ , ... ]
-    /// <with list element> ::= <query name> [ ( <column list> ) ] AS ( <query expression> )
+    /// <with list> ::= <with list element> [, ...]
+    /// <with list element> ::= <query name> [ ( <column name> [, ...] ) ] AS ( <query expression> )
     /// ```
     pub fn parse_with_clause(&mut self) -> Result<Option<With>, ParserError> {
         if self.parse_keyword(Keyword::WITH) {
@@ -252,7 +256,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// Parses a common table expression.
     ///
     /// ```txt
-    /// <with list element> ::= <query name> [ ( <column list> ) ] AS ( <query expression> )
+    /// <with list element> ::= <query name> [ ( <column name> [, ...] ) ] AS ( <query expression> )
     /// ```
     pub fn parse_cte(&mut self) -> Result<Cte, ParserError> {
         // `<name> [ col1 [, ...] ]`
@@ -263,7 +267,11 @@ impl<'a, D: Dialect> Parser<'a, D> {
         self.expect_token(&Token::LeftParen)?;
         let query = Box::new(self.parse_query_expr(true)?);
         self.expect_token(&Token::RightParen)?;
-        Ok(Cte { name, columns, query })
+        Ok(Cte {
+            name,
+            columns,
+            query,
+        })
     }
 
     // ========================================================================
@@ -273,7 +281,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// Parses an `ORDER BY` clause.
     ///
     /// ```txt
-    /// <order by clause> ::= ORDER BY <sort specification> [ , ... ]
+    /// <order by clause> ::= ORDER BY <sort specification> [, ...]
     /// ```
     pub fn parse_order_by_clause(&mut self) -> Result<Option<OrderBy>, ParserError> {
         if self.parse_keywords(&[Keyword::ORDER, Keyword::BY]) {
@@ -313,34 +321,6 @@ impl<'a, D: Dialect> Parser<'a, D> {
             asc,
             nulls_first,
         })
-    }
-
-    // ========================================================================
-    // limit clause (Not ANSI SQL standard, but most dialects support it)
-    // ========================================================================
-
-    /// Parses a `LIMIT` clause.
-    ///
-    /// ```txt
-    /// <limit clause> ::= LIMIT <count>
-    /// ```
-    pub fn parse_limit_clause(&mut self) -> Result<Option<Limit>, ParserError> {
-        if self.parse_keyword(Keyword::LIMIT) {
-            if self.parse_keyword(Keyword::ALL) {
-                // PostgreSQL-specific, `LIMIT ALL`
-                Ok(None)
-            } else {
-                // `LIMIT <count>`
-                let count = self.parse_literal()?;
-                Ok(Some(Limit { count }))
-            }
-        } else if self.next_token_if_is(&Token::word::<D::Keyword, _>("LIMIT", None)) {
-            // NOTE: most dialects support `LIMIT` clause, but ANSI SQL don't support it.
-            let _count = self.parse_literal()?;
-            Ok(None)
-        } else {
-            Ok(None)
-        }
     }
 
     // ========================================================================
@@ -411,6 +391,34 @@ impl<'a, D: Dialect> Parser<'a, D> {
                 percent,
                 quantity,
             }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    // ========================================================================
+    // limit clause (Not ANSI SQL standard, but most dialects support it)
+    // ========================================================================
+
+    /// Parses a `LIMIT` clause.
+    ///
+    /// ```txt
+    /// <limit clause> ::= LIMIT <count>
+    /// ```
+    pub fn parse_limit_clause(&mut self) -> Result<Option<Limit>, ParserError> {
+        if self.parse_keyword(Keyword::LIMIT) {
+            if self.parse_keyword(Keyword::ALL) {
+                // PostgreSQL-specific, `LIMIT ALL`
+                Ok(None)
+            } else {
+                // `LIMIT <count>`
+                let count = self.parse_literal()?;
+                Ok(Some(Limit { count }))
+            }
+        } else if self.next_token_if_is(&Token::word::<D::Keyword, _>("LIMIT", None)) {
+            // NOTE: most dialects support `LIMIT` clause, but ANSI SQL don't support it.
+            let _count = self.parse_literal()?;
+            Ok(None)
         } else {
             Ok(None)
         }
@@ -551,22 +559,6 @@ mod tests {
     }
 
     #[test]
-    fn parse_limit() -> Result<(), ParserError> {
-        let dialect = usql_core::postgres::PostgresDialect::default();
-        assert_eq!(
-            Parser::new_with_sql(&dialect, "LIMIT ALL")?.parse_limit_clause()?,
-            None
-        );
-        assert_eq!(
-            Parser::new_with_sql(&dialect, "LIMIT 1")?.parse_limit_clause()?,
-            Some(Limit {
-                count: Literal::Number("1".into())
-            })
-        );
-        Ok(())
-    }
-
-    #[test]
     fn parse_offset() -> Result<(), ParserError> {
         let dialect = usql_core::ansi::AnsiDialect::default();
         assert_eq!(
@@ -620,6 +612,22 @@ mod tests {
                 quantity: Some(Literal::Number("2".into())),
                 percent: false,
                 with_ties: true,
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_limit() -> Result<(), ParserError> {
+        let dialect = usql_core::postgres::PostgresDialect::default();
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "LIMIT ALL")?.parse_limit_clause()?,
+            None
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "LIMIT 1")?.parse_limit_clause()?,
+            Some(Limit {
+                count: Literal::Number("1".into())
             })
         );
         Ok(())
