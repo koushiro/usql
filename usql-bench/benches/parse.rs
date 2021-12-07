@@ -28,7 +28,7 @@ fn parse(c: &mut Criterion) {
             WHERE id1 > 100 AND id2 < 200
         )
         SELECT * FROM table1
-        // LEFT JOIN derived USING (id)
+        LEFT JOIN derived USING (id)
         ORDER BY id DESC
         OFFSET 20 ROWS
         FETCH FIRST 100 ROWS ONLY

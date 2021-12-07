@@ -132,7 +132,17 @@ impl<'a, D: Dialect> Parser<'a, D> {
                 Keyword::RIGHT,
                 Keyword::FULL,
             ]) {
-                Some(Keyword::JOIN) | Some(Keyword::INNER) => {
+                Some(Keyword::JOIN) => {
+                    let relation = self.parse_table_factor()?;
+                    let join = if natural {
+                        JoinOperator::NaturalInnerJoin
+                    } else {
+                        JoinOperator::InnerJoin(self.parse_join_spec()?)
+                    };
+                    Ok(Some(Join { join, relation }))
+                }
+                Some(Keyword::INNER) => {
+                    self.expect_keyword(Keyword::JOIN)?;
                     let relation = self.parse_table_factor()?;
                     let join = if natural {
                         JoinOperator::NaturalInnerJoin
@@ -143,6 +153,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
                 }
                 Some(Keyword::LEFT) => {
                     self.parse_keyword(Keyword::OUTER);
+                    self.expect_keyword(Keyword::JOIN)?;
                     let relation = self.parse_table_factor()?;
                     let join = if natural {
                         JoinOperator::NaturalLeftOuterJoin
@@ -153,6 +164,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
                 }
                 Some(Keyword::RIGHT) => {
                     self.parse_keyword(Keyword::OUTER);
+                    self.expect_keyword(Keyword::JOIN)?;
                     let relation = self.parse_table_factor()?;
                     let join = if natural {
                         JoinOperator::NaturalRightOuterJoin
@@ -163,6 +175,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
                 }
                 Some(Keyword::FULL) => {
                     self.parse_keyword(Keyword::OUTER);
+                    self.expect_keyword(Keyword::JOIN)?;
                     let relation = self.parse_table_factor()?;
                     let join = if natural {
                         JoinOperator::NaturalFullOuterJoin
@@ -517,6 +530,109 @@ mod tests {
 
     #[test]
     fn parse_joined_table() -> Result<(), ParserError> {
+        let dialect = usql_core::ansi::AnsiDialect::default();
+        let relation = TableFactor::Table {
+            name: ObjectName::new(vec!["table1"]),
+            alias: None,
+        };
+        let join_spec1 = JoinSpec::On(Box::new(Expr::BinaryOp(BinaryOpExpr {
+            left: Box::new(Expr::CompoundIdentifier(vec![
+                Ident::new("table1"),
+                Ident::new("id"),
+            ])),
+            op: BinaryOperator::Equal,
+            right: Box::new(Expr::CompoundIdentifier(vec![
+                Ident::new("table2"),
+                Ident::new("id"),
+            ])),
+        })));
+        let join_spec2 = JoinSpec::Using {
+            columns: vec![Ident::new("id")],
+            alias: None,
+        };
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "CROSS JOIN table1")?.parse_joined_table()?,
+            Some(Join {
+                join: JoinOperator::CrossJoin,
+                relation: relation.clone(),
+            })
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "NATURAL INNER JOIN table1")?.parse_joined_table()?,
+            Some(Join {
+                join: JoinOperator::NaturalInnerJoin,
+                relation: relation.clone(),
+            })
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "NATURAL LEFT OUTER JOIN table1")?
+                .parse_joined_table()?,
+            Some(Join {
+                join: JoinOperator::NaturalLeftOuterJoin,
+                relation: relation.clone(),
+            })
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "NATURAL RIGHT OUTER JOIN table1")?
+                .parse_joined_table()?,
+            Some(Join {
+                join: JoinOperator::NaturalRightOuterJoin,
+                relation: relation.clone(),
+            })
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "NATURAL FULL OUTER JOIN table1")?
+                .parse_joined_table()?,
+            Some(Join {
+                join: JoinOperator::NaturalFullOuterJoin,
+                relation: relation.clone(),
+            })
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "JOIN table1 ON table1.id = table2.id")?
+                .parse_joined_table()?,
+            Some(Join {
+                join: JoinOperator::InnerJoin(join_spec1.clone()),
+                relation: relation.clone(),
+            })
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "INNER JOIN table1 ON table1.id = table2.id")?
+                .parse_joined_table()?,
+            Some(Join {
+                join: JoinOperator::InnerJoin(join_spec1.clone()),
+                relation: relation.clone(),
+            })
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "LEFT OUTER JOIN table1 ON table1.id = table2.id")?
+                .parse_joined_table()?,
+            Some(Join {
+                join: JoinOperator::LeftOuterJoin(join_spec1.clone()),
+                relation: relation.clone(),
+            })
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "RIGHT OUTER JOIN table1 USING (id)")?
+                .parse_joined_table()?,
+            Some(Join {
+                join: JoinOperator::RightOuterJoin(join_spec2.clone()),
+                relation: relation.clone(),
+            })
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "FULL OUTER JOIN table1 USING (id)")?
+                .parse_joined_table()?,
+            Some(Join {
+                join: JoinOperator::FullOuterJoin(join_spec2.clone()),
+                relation: relation.clone(),
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_table_factor() -> Result<(), ParserError> {
         Ok(())
     }
 
