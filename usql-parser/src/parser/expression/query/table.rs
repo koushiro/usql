@@ -57,33 +57,32 @@ impl<'a, D: Dialect> Parser<'a, D> {
     ///
     /// ```txt
     /// <table factor> ::= <table or query name> | [ LATERAL ] <derived table> | <parenthesized joined table>
+    ///
+    /// <table or query name> ::= <name> [ [ AS ] <alias name> [ ( column [, ... ] ) ] ]
+    /// <derived table> ::= ( <query expression> ) [ AS ] <alias name> [ ( column [, ... ] ) ]
     /// ```
     pub fn parse_table_factor(&mut self) -> Result<TableFactor, ParserError> {
         // [ LATERAL ] <derived table>
-        if self.parse_keyword(Keyword::NATURAL) {
+        if self.parse_keyword(Keyword::LATERAL) {
             self.parse_derived_table_factor(true)
         } else if self.peek_token() == Some(&Token::LeftParen) {
             // A left paren introduces either a derived table (i.e., a subquery) or a nested join.
             self.parse_derived_table_factor(false)
             // TODO: support nested join
         } else {
-            // <table or query name>
+            // <name> [ [ AS ] <alias name> [ ( column [, ... ] ) ] ]
             let name = self.parse_object_name()?;
-            let alias = if self.parse_keyword(Keyword::AS) {
-                self.parse_optional_table_alias()?
-            } else {
-                None
-            };
+            let alias = self.parse_table_alias(true)?;
             Ok(TableFactor::Table { name, alias })
         }
     }
 
     fn parse_derived_table_factor(&mut self, lateral: bool) -> Result<TableFactor, ParserError> {
-        // subquery ::= ( <query expression> )
+        // ( <no-with-clause query expression> ) [ AS ] <alias name> [ ( column [, ... ] ) ]
         self.expect_token(&Token::LeftParen)?;
         let subquery = Box::new(self.parse_query_expr(true)?);
         self.expect_token(&Token::RightParen)?;
-        let alias = self.parse_optional_table_alias()?;
+        let alias = self.parse_table_alias(false)?;
         Ok(TableFactor::Derived {
             lateral,
             subquery,
@@ -94,15 +93,24 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// Parses an optional table alias.
     ///
     /// ```txt
-    /// <table alias> ::= [ AS ] <alias name> ( <columns> )
+    /// <table alias> ::= [ AS ] <alias name> [ ( column [, ... ] ) ]
     /// ```
-    pub fn parse_optional_table_alias(&mut self) -> Result<Option<TableAlias>, ParserError> {
+    pub fn parse_table_alias(&mut self, optional: bool) -> Result<Option<TableAlias>, ParserError> {
         if self.parse_keyword(Keyword::AS) {
             let name = self.parse_identifier()?;
             let columns = self.parse_parenthesized_comma_separated(Self::parse_identifier, true)?;
             Ok(Some(TableAlias { name, columns }))
         } else {
-            Ok(None)
+            match self.peek_token() {
+                Some(Token::Word(w)) if w.keyword.is_none() => {
+                    let name = self.parse_identifier()?;
+                    let columns =
+                        self.parse_parenthesized_comma_separated(Self::parse_identifier, true)?;
+                    Ok(Some(TableAlias { name, columns }))
+                }
+                Some(_) | None if optional => Ok(None),
+                _ => self.expected("alias name", Some("not identifier")),
+            }
         }
     }
 
@@ -533,16 +541,19 @@ mod tests {
         let dialect = usql_core::ansi::AnsiDialect::default();
         let relation = TableFactor::Table {
             name: ObjectName::new(vec!["table1"]),
-            alias: None,
+            alias: Some(TableAlias {
+                name: Ident::new("t1"),
+                columns: None,
+            }),
         };
         let join_spec1 = JoinSpec::On(Box::new(Expr::BinaryOp(BinaryOpExpr {
             left: Box::new(Expr::CompoundIdentifier(vec![
-                Ident::new("table1"),
+                Ident::new("t1"),
                 Ident::new("id"),
             ])),
             op: BinaryOperator::Equal,
             right: Box::new(Expr::CompoundIdentifier(vec![
-                Ident::new("table2"),
+                Ident::new("t2"),
                 Ident::new("id"),
             ])),
         })));
@@ -551,21 +562,21 @@ mod tests {
             alias: None,
         };
         assert_eq!(
-            Parser::new_with_sql(&dialect, "CROSS JOIN table1")?.parse_joined_table()?,
+            Parser::new_with_sql(&dialect, "CROSS JOIN table1 t1")?.parse_joined_table()?,
             Some(Join {
                 join: JoinOperator::CrossJoin,
                 relation: relation.clone(),
             })
         );
         assert_eq!(
-            Parser::new_with_sql(&dialect, "NATURAL INNER JOIN table1")?.parse_joined_table()?,
+            Parser::new_with_sql(&dialect, "NATURAL INNER JOIN table1 t1")?.parse_joined_table()?,
             Some(Join {
                 join: JoinOperator::NaturalInnerJoin,
                 relation: relation.clone(),
             })
         );
         assert_eq!(
-            Parser::new_with_sql(&dialect, "NATURAL LEFT OUTER JOIN table1")?
+            Parser::new_with_sql(&dialect, "NATURAL LEFT OUTER JOIN table1 t1")?
                 .parse_joined_table()?,
             Some(Join {
                 join: JoinOperator::NaturalLeftOuterJoin,
@@ -573,7 +584,7 @@ mod tests {
             })
         );
         assert_eq!(
-            Parser::new_with_sql(&dialect, "NATURAL RIGHT OUTER JOIN table1")?
+            Parser::new_with_sql(&dialect, "NATURAL RIGHT OUTER JOIN table1 t1")?
                 .parse_joined_table()?,
             Some(Join {
                 join: JoinOperator::NaturalRightOuterJoin,
@@ -581,7 +592,7 @@ mod tests {
             })
         );
         assert_eq!(
-            Parser::new_with_sql(&dialect, "NATURAL FULL OUTER JOIN table1")?
+            Parser::new_with_sql(&dialect, "NATURAL FULL OUTER JOIN table1 t1")?
                 .parse_joined_table()?,
             Some(Join {
                 join: JoinOperator::NaturalFullOuterJoin,
@@ -589,7 +600,7 @@ mod tests {
             })
         );
         assert_eq!(
-            Parser::new_with_sql(&dialect, "JOIN table1 ON table1.id = table2.id")?
+            Parser::new_with_sql(&dialect, "JOIN table1 t1 ON t1.id = t2.id")?
                 .parse_joined_table()?,
             Some(Join {
                 join: JoinOperator::InnerJoin(join_spec1.clone()),
@@ -597,7 +608,7 @@ mod tests {
             })
         );
         assert_eq!(
-            Parser::new_with_sql(&dialect, "INNER JOIN table1 ON table1.id = table2.id")?
+            Parser::new_with_sql(&dialect, "INNER JOIN table1 t1 ON t1.id = t2.id")?
                 .parse_joined_table()?,
             Some(Join {
                 join: JoinOperator::InnerJoin(join_spec1.clone()),
@@ -605,7 +616,7 @@ mod tests {
             })
         );
         assert_eq!(
-            Parser::new_with_sql(&dialect, "LEFT OUTER JOIN table1 ON table1.id = table2.id")?
+            Parser::new_with_sql(&dialect, "LEFT OUTER JOIN table1 t1 ON t1.id = t2.id")?
                 .parse_joined_table()?,
             Some(Join {
                 join: JoinOperator::LeftOuterJoin(join_spec1.clone()),
@@ -613,7 +624,7 @@ mod tests {
             })
         );
         assert_eq!(
-            Parser::new_with_sql(&dialect, "RIGHT OUTER JOIN table1 USING (id)")?
+            Parser::new_with_sql(&dialect, "RIGHT OUTER JOIN table1 t1 USING (id)")?
                 .parse_joined_table()?,
             Some(Join {
                 join: JoinOperator::RightOuterJoin(join_spec2.clone()),
@@ -621,7 +632,7 @@ mod tests {
             })
         );
         assert_eq!(
-            Parser::new_with_sql(&dialect, "FULL OUTER JOIN table1 USING (id)")?
+            Parser::new_with_sql(&dialect, "FULL OUTER JOIN table1 t1 USING (id)")?
                 .parse_joined_table()?,
             Some(Join {
                 join: JoinOperator::FullOuterJoin(join_spec2.clone()),

@@ -214,13 +214,21 @@ impl fmt::Display for With {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Cte {
-    pub alias: TableAlias,
+    /// Alias name.
+    pub name: Ident,
+    /// Columns.
+    pub columns: Option<Vec<Ident>>,
+    /// Query expression (no-with-clause).
     pub query: Box<Query>,
 }
 
 impl fmt::Display for Cte {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} AS ({})", self.alias, self.query)
+        if let Some(columns) = &self.columns {
+            write!(f, "{} ({}) AS ({})", self.name, display_comma_separated(columns), self.query)
+        } else {
+            write!(f, "{} AS ({})", self.name, self.query)
+        }
     }
 }
 
