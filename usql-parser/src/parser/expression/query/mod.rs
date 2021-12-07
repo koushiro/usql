@@ -1,7 +1,7 @@
 mod table;
 
 #[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, vec, vec::Vec};
+use alloc::{boxed::Box, vec::Vec};
 
 use usql_ast::{expression::*, types::*};
 use usql_core::{Dialect, Keyword};

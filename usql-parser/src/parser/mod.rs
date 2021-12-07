@@ -3,13 +3,7 @@ mod statement;
 mod types;
 
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    format,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-};
+use alloc::{boxed::Box, format, vec, vec::Vec};
 use core::fmt::Display;
 
 use usql_core::{Dialect, Keyword};
