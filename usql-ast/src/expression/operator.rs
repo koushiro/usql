@@ -38,9 +38,7 @@ pub enum BinaryOperator {
     Equal,
     NotEqual,
 
-    And,
-    Or,
-    Xor,
+    StringConcat,
 
     BitwiseAnd,
     BitwiseOr,
@@ -48,7 +46,9 @@ pub enum BinaryOperator {
     BitwiseLeftShift,
     BitwiseRightShift,
 
-    StringConcat,
+    And,
+    Or,
+    Xor,
 
     Like,
     NotLike,
@@ -72,9 +72,7 @@ impl fmt::Display for BinaryOperator {
             BinaryOperator::Equal => "=",
             BinaryOperator::NotEqual => "<>",
 
-            BinaryOperator::And => "AND",
-            BinaryOperator::Or => "OR",
-            BinaryOperator::Xor => "XOR",
+            BinaryOperator::StringConcat => "||",
 
             BinaryOperator::BitwiseAnd => "&",
             BinaryOperator::BitwiseOr => "|",
@@ -82,7 +80,9 @@ impl fmt::Display for BinaryOperator {
             BinaryOperator::BitwiseLeftShift => "<<",
             BinaryOperator::BitwiseRightShift => ">>",
 
-            BinaryOperator::StringConcat => "||",
+            BinaryOperator::And => "AND",
+            BinaryOperator::Or => "OR",
+            BinaryOperator::Xor => "XOR",
 
             BinaryOperator::Like => "LIKE",
             BinaryOperator::NotLike => "NOT LIKE",

@@ -96,7 +96,6 @@ impl<I: Iterator> MultiPeek<I> {
     }
 
     /// Returns the peeking "cursor".
-    #[cfg(test)]
     pub(crate) fn peek_cursor(&self) -> usize {
         self.index
     }
@@ -165,6 +164,12 @@ mod tests {
         assert_eq!(iter.peek_cursor(), 0);
         assert_eq!(iter.peek(), Some(&0));
         assert_eq!(iter.peek_cursor(), 0);
+        assert_eq!(iter.peek_next(), Some(&0));
+        assert_eq!(iter.peek_cursor(), 1);
+        assert_eq!(iter.peek(), Some(&1));
+        assert_eq!(iter.peek_cursor(), 1);
+        assert_eq!(iter.peek_next(), Some(&1));
+        assert_eq!(iter.peek_cursor(), 2);
 
         assert_eq!(iter.next(), Some(0));
         assert_eq!(iter.peek_cursor(), 0);

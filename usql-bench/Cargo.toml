@@ -10,6 +10,11 @@ name = "tokenize"
 path = "benches/tokenize.rs"
 harness = false
 
+[[bench]]
+name = "parse"
+path = "benches/parse.rs"
+harness = false
+
 [dev-dependencies]
 criterion = "0.3"
 sqlparser = "0.12"

@@ -1,11 +1,20 @@
+// table expression
+mod table;
+
 #[cfg(not(feature = "std"))]
 use alloc::{boxed::Box, vec::Vec};
 use core::fmt;
 
+pub use self::table::*;
 use crate::{expression::*, types::*, utils::display_comma_separated};
 
 /// The most complete variant of a `SELECT` query expression, optionally
 /// including `WITH`, `UNION` / other set operations, and `ORDER BY`.
+///
+/// ```txt
+/// <query expression> ::= [ <with clause> ] <query expression body>
+///     [ <order by clause> ] [ <result offset clause> ] [ <fetch first clause> ]
+/// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Query {
@@ -15,10 +24,10 @@ pub struct Query {
     pub body: QueryBody,
     /// `ORDER BY { <sort_key> [ ASC | DESC ] [ NULLS FIRST | NULLS LAST ] } [, ...]`
     pub order_by: Option<OrderBy>,
-    /// `LIMIT { <N> | ALL }`
-    pub limit: Option<Limit>,
     /// `OFFSET <N> [ { ROW | ROWS } ]`
     pub offset: Option<Offset>,
+    /// `LIMIT { <N> | ALL }`
+    pub limit: Option<Limit>,
     /// `FETCH { FIRST | NEXT } <N> [ PERCENT ] { ROW | ROWS } | { ONLY | WITH TIES }`
     pub fetch: Option<Fetch>,
 }
@@ -46,14 +55,37 @@ impl fmt::Display for Query {
 }
 
 /// The body of query expression.
+///
+/// ```txt
+/// <query expression body> ::=
+///     <query term>
+///     | <query expression body> UNION [ ALL | DISTINCT] <query expression body>
+///     | <query expression body> INTERSECT [ ALL | DISTINCT] <query expression body>
+///
+/// <query term> ::= <query primary> | <query term> INTERSECT [ ALL | DISTINCT] <query primary>
+/// <query primary> ::= <simple table> | no-with-clause query expression
+///
+/// <simple table> ::= <query specification> | <table value constructor> | <explicit table>
+/// <table value constructor> ::= VALUES <row value expression> [ { , <row value expression> }... ]
+/// <explicit table> ::= TABLE <table or query name>
+/// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum QueryBody {
-    Select(Box<Select>),
+    /// Query specification, like `SELECT ... FROM ... GROUP BY ... HAVING ... WINDOW ...`
+    QuerySpec(Box<QuerySpec>),
+    /// Parenthesized (non-with clause) subquery expression
+    Subquery(Box<Query>),
+    // Table value constructor
+    Values(Values),
+    /// Explicit table
+    Table(ObjectName),
+    /// UNION/EXCEPT/INTERSECT operation of two query bodies
     Operation {
         left: Box<QueryBody>,
         op: QueryBodyOperator,
+        quantifier: Option<SetQuantifier>,
         right: Box<QueryBody>,
     },
 }
@@ -61,9 +93,48 @@ pub enum QueryBody {
 impl fmt::Display for QueryBody {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            QueryBody::Select(select) => write!(f, "{}", select),
-            QueryBody::Operation { left, op, right } => write!(f, "{} {} {}", left, op, right),
+            Self::QuerySpec(select) => write!(f, "{}", select),
+            Self::Subquery(query) => write!(f, "({})", query),
+            Self::Values(values) => write!(f, "{}", values),
+            Self::Table(name) => write!(f, "{}", name),
+            Self::Operation {
+                left,
+                op,
+                quantifier,
+                right,
+            } => {
+                write!(f, "{} {}", left, op)?;
+                if let Some(quantifier) = quantifier {
+                    write!(f, " {}", quantifier)?;
+                }
+                write!(f, " {}", right)
+            }
         }
+    }
+}
+
+/// The values list, which provides a way to generate a “constant table” that can be used in a query.
+///
+/// ```txt
+/// <table value constructor> ::= VALUES <row value expression> [ { , <row value expression> }... ]
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Values {
+    /// The list of row value expression.
+    pub list: Vec<Vec<Expr>>,
+}
+
+impl fmt::Display for Values {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("VALUES ")?;
+        let mut delim = "";
+        for row in &self.list {
+            write!(f, "{}", delim)?;
+            delim = ", ";
+            write!(f, "({})", display_comma_separated(row))?;
+        }
+        Ok(())
     }
 }
 
@@ -72,23 +143,17 @@ impl fmt::Display for QueryBody {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum QueryBodyOperator {
-    Union(Option<SetQuantifier>),
-    Except(Option<SetQuantifier>),
-    Intersect(Option<SetQuantifier>),
+    Union,
+    Except,
+    Intersect,
 }
 
 impl fmt::Display for QueryBodyOperator {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match self {
-            QueryBodyOperator::Union(None) => "UNION",
-            QueryBodyOperator::Union(Some(SetQuantifier::All)) => "UNION ALL",
-            QueryBodyOperator::Union(Some(SetQuantifier::Distinct)) => "UNION DISTINCT",
-            QueryBodyOperator::Except(None) => "EXCEPT",
-            QueryBodyOperator::Except(Some(SetQuantifier::All)) => "EXCEPT ALL",
-            QueryBodyOperator::Except(Some(SetQuantifier::Distinct)) => "EXCEPT DISTINCT",
-            QueryBodyOperator::Intersect(None) => "INTERSECT",
-            QueryBodyOperator::Intersect(Some(SetQuantifier::All)) => "INTERSECT ALL",
-            QueryBodyOperator::Intersect(Some(SetQuantifier::Distinct)) => "INTERSECT DISTINCT",
+            Self::Union => "UNION",
+            Self::Except => "EXCEPT",
+            Self::Intersect => "INTERSECT",
         })
     }
 }
@@ -116,6 +181,12 @@ impl fmt::Display for SetQuantifier {
 // ============================================================================
 
 /// With clause.
+///
+/// ```txt
+/// <with clause> ::= WITH [ RECURSIVE ] <with list>
+/// <with list> ::= <with list element> [ { , <with list element> }... ]
+/// <with list element> ::= <query name> [ ( <column list> ) ] AS ( <query expression> )
+/// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct With {
@@ -144,17 +215,12 @@ impl fmt::Display for With {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Cte {
     pub alias: TableAlias,
-    pub query: Query,
-    pub from: Option<Ident>,
+    pub query: Box<Query>,
 }
 
 impl fmt::Display for Cte {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} AS ({})", self.alias, self.query)?;
-        if let Some(from) = &self.from {
-            write!(f, " FROM {}", from)?;
-        }
-        Ok(())
+        write!(f, "{} AS ({})", self.alias, self.query)
     }
 }
 
@@ -183,7 +249,7 @@ impl fmt::Display for OrderBy {
 /// A sort specification.
 ///
 /// ```txt
-/// <sort_key>  [ ASC | DESC  ] [ NULLS FIRST | NULLS LAST  ]
+/// <sort key>  [ ASC | DESC  ] [ NULLS FIRST | NULLS LAST  ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -219,24 +285,21 @@ impl fmt::Display for SortSpec {
 
 /// Limit clause.
 ///
+/// NOTE: we don't support `LIMIT [ offset, ] row_count` syntax yet.
+///
 /// ```txt
-/// LIMIT [ offset, ] row_count
+/// LIMIT <count>
 /// ```
-#[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Limit {
-    pub offset: Option<Literal>,
+    /// The row count.
     pub count: Literal,
 }
 
 impl fmt::Display for Limit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(offset) = &self.offset {
-            write!(f, "LIMIT {},{}", offset, self.count)
-        } else {
-            write!(f, "LIMIT {}", self.count)
-        }
+        write!(f, "LIMIT {}", self.count)
     }
 }
 
@@ -247,19 +310,19 @@ impl fmt::Display for Limit {
 /// Offset clause.
 ///
 /// ```txt
-/// OFFSET <offset> [ { ROW | ROWS } ]
+/// OFFSET <count> [ { ROW | ROWS } ]
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Offset {
-    pub offset: Literal,
+    pub count: Literal,
     pub rows: OffsetRows,
 }
 
 impl fmt::Display for Offset {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "OFFSET {}{}", self.offset, self.rows)
+        write!(f, "OFFSET {}{}", self.count, self.rows)
     }
 }
 
@@ -268,18 +331,18 @@ impl fmt::Display for Offset {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum OffsetRows {
-    /// Omitting ROW/ROWS is non-standard MySQL quirk.
-    None,
     Row,
     Rows,
+    /// Omitting ROW/ROWS is non-standard MySQL quirk.
+    None,
 }
 
 impl fmt::Display for OffsetRows {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            OffsetRows::None => Ok(()),
             OffsetRows::Row => f.write_str(" ROW"),
             OffsetRows::Rows => f.write_str(" ROWS"),
+            OffsetRows::None => Ok(()),
         }
     }
 }
