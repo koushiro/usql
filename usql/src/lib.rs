@@ -9,3 +9,4 @@
 pub use usql_ast as ast;
 pub use usql_core as core;
 pub use usql_lexer as lexer;
+pub use usql_parser as parser;

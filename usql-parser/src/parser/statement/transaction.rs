@@ -130,7 +130,7 @@ mod tests {
     use crate::error::parse_error;
 
     #[test]
-    fn parse_stmt_start_transaction() -> Result<(), ParserError> {
+    fn parse_start_transaction_stmt() -> Result<(), ParserError> {
         let dialect = usql_core::ansi::AnsiDialect::default();
         let sql = "START TRANSACTION ISOLATION LEVEL READ UNCOMMITTED, READ ONLY";
         assert_eq!(
@@ -163,7 +163,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_stmt_begin() -> Result<(), ParserError> {
+    fn parse_begin_stmt() -> Result<(), ParserError> {
         let dialect = usql_core::mysql::MysqlDialect::default();
         // MySQL: BEGIN [ WORK ]
         assert_eq!(
@@ -224,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_stmt_set_transaction() -> Result<(), ParserError> {
+    fn parse_set_transaction_stmt() -> Result<(), ParserError> {
         // ANSI: SET [ LOCAL ] TRANSACTION  transaction_mode [, ...]
         let dialect = usql_core::ansi::AnsiDialect::default();
         let sql = "SET LOCAL TRANSACTION ISOLATION LEVEL READ UNCOMMITTED, READ ONLY";
@@ -269,7 +269,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_stmt_commit() -> Result<(), ParserError> {
+    fn parse_commit_stmt() -> Result<(), ParserError> {
         // ANSI: COMMIT [ WORK ] [ AND [ NO ] CHAIN ]
         let dialect = usql_core::ansi::AnsiDialect::default();
         assert_eq!(
@@ -343,7 +343,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_stmt_rollback() -> Result<(), ParserError> {
+    fn parse_rollback_stmt() -> Result<(), ParserError> {
         // ANSI: ROLLBACK [ WORK ] [ AND [ NO ] CHAIN ] [ TO SAVEPOINT <savepoint specifier> ]
         let dialect = usql_core::ansi::AnsiDialect::default();
         assert_eq!(

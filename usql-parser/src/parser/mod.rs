@@ -3,13 +3,7 @@ mod statement;
 mod types;
 
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    format,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-};
+use alloc::{boxed::Box, format, vec, vec::Vec};
 use core::fmt::Display;
 
 use usql_core::{Dialect, Keyword};
@@ -22,8 +16,7 @@ use crate::{
 
 /// SQL Parser
 pub struct Parser<'a, D: Dialect> {
-    #[allow(unused)]
-    dialect: &'a D,
+    _dialect: &'a D,
     iter: MultiPeek<Box<dyn Iterator<Item = Token> + 'static>>,
 }
 
@@ -35,7 +28,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
             .into_iter()
             .filter(|token| !token.is_whitespace() && !token.is_comment());
         Self {
-            dialect,
+            _dialect: dialect,
             iter: (Box::new(filter) as Box<dyn Iterator<Item = Token>>).multipeek(),
         }
     }
@@ -46,7 +39,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
         Ok(Self::new_with_tokens(dialect, tokens))
     }
 
-    /// Parse a comma-separated list of 1+ items accepted by `F`.
+    /// Parses a comma-separated list of 1+ items accepted by `F`.
     pub fn parse_comma_separated<T, F>(&mut self, mut f: F) -> Result<Vec<T>, ParserError>
     where
         F: FnMut(&mut Parser<'a, D>) -> Result<T, ParserError>,
@@ -59,6 +52,27 @@ impl<'a, D: Dialect> Parser<'a, D> {
             }
         }
         Ok(values)
+    }
+
+    /// Parses a comma-separated list of items accepted by `F` in the parentheses.
+    pub fn parse_parenthesized_comma_separated<T, F>(
+        &mut self,
+        f: F,
+        optional: bool,
+    ) -> Result<Option<Vec<T>>, ParserError>
+    where
+        F: FnMut(&mut Parser<'a, D>) -> Result<T, ParserError>,
+    {
+        if self.next_token_if_is(&Token::LeftParen) {
+            let list = self.parse_comma_separated::<T, _>(f)?;
+            self.expect_token(&Token::RightParen)?;
+            Ok(Some(list))
+        } else if optional {
+            Ok(None)
+        } else {
+            let found = self.peek_token().cloned();
+            self.expected("a comma separated list in parenthesis", found)
+        }
     }
 
     /// Report unexpected token.
@@ -172,6 +186,11 @@ impl<'a, D: Dialect> Parser<'a, D> {
     /// When `.next_token()` is called, reset the peeking "cursor".
     pub fn peek_next_token(&mut self) -> Option<&Token> {
         self.iter.peek_next()
+    }
+
+    /// Returns the peeking "cursor" of tokens.
+    pub fn peek_cursor(&mut self) -> usize {
+        self.iter.peek_cursor()
     }
 
     /// Reset the peek cursor.

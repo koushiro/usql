@@ -77,3 +77,10 @@ impl fmt::Display for ObjectName {
         write!(f, "{}", display_separated(&self.0, "."))
     }
 }
+
+impl ObjectName {
+    /// Creates a new object name from the given identifiers.
+    pub fn new<T: IntoIterator<Item = S>, S: Into<String>>(parts: T) -> Self {
+        ObjectName(parts.into_iter().map(|s| Ident::new(s)).collect())
+    }
+}

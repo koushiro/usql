@@ -1,7 +1,8 @@
 mod function;
+// unary operator and binary operator
 mod operator;
+// query expression
 mod query;
-mod table;
 
 #[cfg(not(feature = "std"))]
 use alloc::{boxed::Box, vec::Vec};
@@ -11,10 +12,9 @@ pub use self::{
     function::*,
     operator::{BinaryOperator, UnaryOperator},
     query::*,
-    table::*,
 };
 use crate::{
-    types::{DataType, DateTimeField, Ident, Literal, ObjectName},
+    types::{DataType, DateTimeField, Ident, Literal},
     utils::{display_comma_separated, display_separated},
 };
 
@@ -43,17 +43,12 @@ pub enum Expr {
 
     /// Nested expression e.g. `(foo > bar)` or `(1)`
     Nested(Box<Expr>),
-
-    /// An exists expression `EXISTS(SELECT ...)`, used in expressions like
-    /// `WHERE EXISTS (SELECT ...)`.
-    Exists(Box<Query>),
     /// A parenthesized subquery `(SELECT ...)`, used in expression like
     /// `SELECT (subquery) AS x` or `WHERE (subquery) = x`
     Subquery(Box<Query>),
 
     /// `IS [NOT] NULL` operator
     IsNull(IsNullExpr),
-
     /// `IS [NOT] DISTINCT FROM` operator
     IsDistinctFrom(IsDistinctFromExpr),
 
@@ -64,7 +59,6 @@ pub enum Expr {
 
     /// `<expr> [ NOT ] IN (expr1, expr2, ...)`
     InList(InListExpr),
-
     /// `<expr> [ NOT ] IN (SELECT ...)`
     InSubquery(InSubqueryExpr),
 
@@ -78,9 +72,6 @@ pub enum Expr {
     /// <https://jakewheat.github.io/sql-overview/sql-2016-foundation-grammar.html#simple-when-clause>
     Case(CaseExpr),
 
-    /// `<expr> COLLATE collation`
-    Collate(CollateExpr),
-
     /// CAST / TRY_CAST an expression to a different data type,
     /// e.g. `CAST(foo AS VARCHAR(123))`, `TRY_CAST(foo AS VARCHAR(123))`
     //  TRY_CAST differs from CAST in the choice of how to implement invalid conversions
@@ -88,6 +79,10 @@ pub enum Expr {
 
     /// Scalar function call e.g. `COUNT(DISTINCT x)`
     Function(Function),
+
+    /// An exists expression `EXISTS(SELECT ...)`, used in expressions like
+    /// `WHERE EXISTS (SELECT ...)`.
+    Exists(Box<Query>),
 
     /// EXTRACT(DateTimeField FROM <expr>)
     Extract(ExtractExpr),
@@ -114,7 +109,6 @@ impl fmt::Display for Expr {
             Self::QualifiedWildcard(idents) => write!(f, "{}.*", display_separated(idents, ".")),
             Self::CompoundIdentifier(idents) => write!(f, "{}", display_separated(idents, ".")),
             Self::Nested(expr) => write!(f, "({})", expr),
-            Self::Exists(query) => write!(f, "EXISTS ({})", query),
             Self::Subquery(query) => write!(f, "({})", query),
             Self::IsNull(expr) => write!(f, "{}", expr),
             Self::IsDistinctFrom(expr) => write!(f, "{}", expr),
@@ -124,9 +118,9 @@ impl fmt::Display for Expr {
             Self::InSubquery(expr) => write!(f, "{}", expr),
             Self::Between(expr) => write!(f, "{}", expr),
             Self::Case(expr) => write!(f, "{}", expr),
-            Self::Collate(expr) => write!(f, "{}", expr),
             Self::Cast(expr) => write!(f, "{}", expr),
             Self::Function(func) => write!(f, "{}", func),
+            Self::Exists(query) => write!(f, "EXISTS ({})", query),
             Self::Extract(expr) => write!(f, "{}", expr),
             Self::Substring(expr) => write!(f, "{}", expr),
             Self::Trim(expr) => write!(f, "{}", expr),
@@ -182,8 +176,8 @@ impl fmt::Display for IsDistinctFromExpr {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct UnaryOpExpr {
-    op: UnaryOperator,
-    expr: Box<Expr>,
+    pub op: UnaryOperator,
+    pub expr: Box<Expr>,
 }
 
 impl fmt::Display for UnaryOpExpr {
@@ -197,8 +191,8 @@ impl fmt::Display for UnaryOpExpr {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BinaryOpExpr {
-    pub op: BinaryOperator,
     pub left: Box<Expr>,
+    pub op: BinaryOperator,
     pub right: Box<Expr>,
 }
 
@@ -307,40 +301,18 @@ impl fmt::Display for CaseExpr {
     }
 }
 
-/// `<expr> COLLATE collation`
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct CollateExpr {
-    pub expr: Box<Expr>,
-    pub collation: ObjectName,
-}
-
-impl fmt::Display for CollateExpr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} COLLATE {}", self.expr, self.collation)
-    }
-}
-
-/// CAST / TRY_CAST an expression to a different data type,
-/// e.g. `CAST(foo AS VARCHAR(123))`, `TRY_CAST(foo AS VARCHAR(123))`
-//  TRY_CAST differs from CAST in the choice of how to implement invalid conversions
+/// CAST an expression to a different data type, e.g. `CAST(foo AS VARCHAR(123))`.
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CastExpr {
-    pub r#try: bool,
     pub expr: Box<Expr>,
     pub data_type: DataType,
 }
 
 impl fmt::Display for CastExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.r#try {
-            write!(f, "TRY_CAST({} AS {})", self.expr, self.data_type)
-        } else {
-            write!(f, "CAST({} AS {})", self.expr, self.data_type)
-        }
+        write!(f, "CAST({} AS {})", self.expr, self.data_type)
     }
 }
 
