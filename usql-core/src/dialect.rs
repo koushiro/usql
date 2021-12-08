@@ -90,18 +90,6 @@ pub trait DialectLexerConf: Clone + Debug {
     fn is_identifier_part(&self, ch: char) -> bool {
         ch.is_ascii_alphanumeric() || ch == '_'
     }
-
-    /// Determine if the whitespace token will be ignored.
-    /// If enable it, whitespace will be excluded from the result of lexical analysis.
-    fn ignore_whitespace(&self) -> bool {
-        false
-    }
-
-    /// Determine if the comment token will be ignored.
-    /// If enable it, comment will be excluded from the result of lexical analysis.
-    fn ignore_comment(&self) -> bool {
-        false
-    }
 }
 
 /// The configuration of the parser part of dialect.

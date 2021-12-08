@@ -162,24 +162,6 @@ impl fmt::Display for Token {
 }
 
 impl Token {
-    /// Creates a SQL keyword.
-    // https://github.com/rust-lang/rust/issues/83701
-    pub fn keyword<K: KeywordDef, W: Into<String>>(value: W) -> Option<Self> {
-        let value = value.into();
-        let keyword_uppercase = value.to_uppercase();
-        let keyword = K::KEYWORDS_STRING
-            .binary_search(&keyword_uppercase.as_str())
-            .map(|x| K::KEYWORDS[x])
-            .ok();
-        keyword.map(|kw| {
-            Self::Word(Word {
-                keyword: Some(kw),
-                value,
-                quote: None,
-            })
-        })
-    }
-
     /// Creates a SQL keyword or an optionally quoted SQL identifier.
     // https://github.com/rust-lang/rust/issues/83701
     pub fn word<K: KeywordDef, W: Into<String>>(value: W, quote: Option<char>) -> Self {
@@ -196,6 +178,24 @@ impl Token {
             },
             value,
             quote,
+        })
+    }
+
+    /// Creates a SQL keyword.
+    // https://github.com/rust-lang/rust/issues/83701
+    pub fn keyword<K: KeywordDef, W: Into<String>>(value: W) -> Option<Self> {
+        let value = value.into();
+        let keyword_uppercase = value.to_uppercase();
+        let keyword = K::KEYWORDS_STRING
+            .binary_search(&keyword_uppercase.as_str())
+            .map(|x| K::KEYWORDS[x])
+            .ok();
+        keyword.map(|kw| {
+            Self::Word(Word {
+                keyword: Some(kw),
+                value,
+                quote: None,
+            })
         })
     }
 
