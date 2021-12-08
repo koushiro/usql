@@ -33,23 +33,11 @@ impl Dialect for MyDialect2 {
 
 #[derive(Clone, Debug, Default)]
 pub struct MyDialect1LexerConfig;
-impl DialectLexerConf for MyDialect1LexerConfig {
-    fn ignore_whitespace(&self) -> bool {
-        true
-    }
-}
+impl DialectLexerConf for MyDialect1LexerConfig {}
 
 #[derive(Clone, Debug, Default)]
 pub struct MyDialect2LexerConfig;
-impl DialectLexerConf for MyDialect2LexerConfig {
-    fn ignore_whitespace(&self) -> bool {
-        true
-    }
-
-    fn ignore_comment(&self) -> bool {
-        true
-    }
-}
+impl DialectLexerConf for MyDialect2LexerConfig {}
 
 #[derive(Clone, Debug, Default)]
 pub struct MyDialectParserConfig;

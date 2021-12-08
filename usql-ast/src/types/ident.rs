@@ -1,8 +1,5 @@
 #[cfg(not(feature = "std"))]
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::{string::String, vec::Vec};
 use core::fmt;
 
 use crate::utils::display_separated;
@@ -50,7 +47,7 @@ impl Ident {
 impl From<&str> for Ident {
     fn from(value: &str) -> Self {
         Ident {
-            value: value.to_string(),
+            value: value.into(),
             quote: None,
         }
     }
