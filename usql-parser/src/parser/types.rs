@@ -175,8 +175,11 @@ impl<'a, D: Dialect> Parser<'a, D> {
             } else {
                 Ok(DataType::Array(Box::new(data_type), None))
             }
+        } else if self.parse_keyword(Keyword::MULTISET) {
+            // ANSI SQL, e.g. INTEGER MULTISET
+            Ok(DataType::Multiset(Box::new(data_type)))
         } else {
-            // PostgreSQL-specific e.g. INTEGER[], INTEGER[10]
+            // PostgreSQL-specific array, e.g. INTEGER[], INTEGER[10]
             if self.next_token_if_is(&Token::LeftBracket) {
                 if self.next_token_if_is(&Token::RightBracket) {
                     Ok(DataType::Array(Box::new(data_type), None))
@@ -534,6 +537,7 @@ mod tests {
     #[test]
     fn parse_data_type() -> Result<(), ParserError> {
         parse_data_type_array()?;
+        parse_data_type_multiset()?;
         parse_data_type_integer()?;
         parse_data_type_arbitrary_precision_number()?;
         parse_data_type_floating_point_number()?;
@@ -561,6 +565,20 @@ mod tests {
         assert_eq!(
             Parser::new_with_sql(&dialect, "INTEGER[10]")?.parse_data_type()?,
             DataType::Array(Box::new(DataType::Int(None)), Some(10))
+        );
+        Ok(())
+    }
+
+    // #[test]
+    fn parse_data_type_multiset() -> Result<(), ParserError> {
+        let dialect = usql_core::ansi::AnsiDialect::default();
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "INTEGER MULTISET")?.parse_data_type()?,
+            DataType::Multiset(Box::new(DataType::Int(None)))
+        );
+        assert_eq!(
+            Parser::new_with_sql(&dialect, "INTEGER(10) MULTISET")?.parse_data_type()?,
+            DataType::Multiset(Box::new(DataType::Int(Some(10))))
         );
         Ok(())
     }

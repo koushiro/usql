@@ -158,7 +158,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_multipeek() {
+    fn multipeek() {
         let mut iter = (0..3).multipeek();
         assert_eq!(iter.peek(), Some(&0));
         assert_eq!(iter.peek_cursor(), 0);
@@ -190,7 +190,7 @@ mod tests {
     }
 
     #[test]
-    fn test_multipeek_next_if() {
+    fn multipeek_next_if() {
         let mut iter = (0..5).multipeek();
         // The first item of the iterator is 0; consume it.
         assert_eq!(iter.next_if(|&x| x == 0), Some(0));

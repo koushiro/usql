@@ -2,6 +2,8 @@
 use alloc::boxed::Box;
 use core::fmt;
 
+use crate::types::ObjectName;
+
 /// SQL data types
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -90,6 +92,14 @@ pub enum DataType {
     // ========================================================================
     /// Array
     Array(Box<DataType>, Option<u64>),
+    /// Multiset
+    Multiset(Box<DataType>),
+
+    // ========================================================================
+    // User-defined Types
+    // ========================================================================
+    /// User-defined type
+    Custom(ObjectName),
 }
 
 impl fmt::Display for DataType {
@@ -145,6 +155,9 @@ impl fmt::Display for DataType {
                     write!(f, "{}[]", ty)
                 }
             }
+            DataType::Multiset(ty) => write!(f, "{} MULTISET", ty),
+
+            DataType::Custom(name) => write!(f, "{}", name),
         }
     }
 }
