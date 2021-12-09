@@ -6,9 +6,10 @@ use alloc::{boxed::Box, vec::Vec};
 use crate::{
     ast::{expression::*, types::*},
     dialect::Dialect,
+    error::ParserError,
     keywords::Keyword,
     lexer::Token,
-    parser::{error::ParserError, Parser},
+    parser::Parser,
 };
 
 impl<'a, D: Dialect> Parser<'a, D> {

@@ -1,4 +1,3 @@
-mod error;
 mod peek;
 
 mod expression;
@@ -9,14 +8,13 @@ mod types;
 use alloc::{boxed::Box, format, vec, vec::Vec};
 use core::fmt::Display;
 
+use self::peek::{MultiPeek, PeekIteratorExt};
 use crate::{
     dialect::Dialect,
+    error::{parse_error, ParserError},
     keywords::Keyword,
-    lexer::{Lexer, Token},
-    parser::{
-        error::{parse_error, ParserError},
-        peek::{MultiPeek, PeekIteratorExt},
-    },
+    lexer::Lexer,
+    tokens::Token,
 };
 
 /// SQL Parser

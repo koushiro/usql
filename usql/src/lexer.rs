@@ -7,14 +7,11 @@ use alloc::{
 };
 use core::{iter::Peekable, str::Chars};
 
-mod error;
-mod tokens;
-
-pub use self::{
+pub use crate::{
+    dialect::{Dialect, DialectLexerConf},
     error::{LexerError, Location},
     tokens::{Comment, Token, Whitespace, Word},
 };
-use crate::dialect::{Dialect, DialectLexerConf};
 
 /// SQL Lexer
 pub struct Lexer<'a, D: Dialect> {

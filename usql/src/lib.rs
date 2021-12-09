@@ -12,7 +12,9 @@ extern crate alloc;
 #[macro_use]
 mod macros;
 mod dialect;
+mod error;
 mod keywords;
+mod tokens;
 
 /// Universal SQL AST types.
 pub mod ast;
@@ -37,4 +39,5 @@ pub mod sqlite;
 pub use self::{
     dialect::{CustomDialect, Dialect, DialectLexerConf, DialectParserConf},
     keywords::{Keyword, KeywordDef},
+    tokens::{Comment, Token, Whitespace, Word},
 };

@@ -2,11 +2,8 @@
 use alloc::boxed::Box;
 
 use crate::{
-    ast::statement::*,
-    dialect::Dialect,
-    keywords::Keyword,
-    lexer::Token,
-    parser::{error::ParserError, Parser},
+    ast::statement::*, dialect::Dialect, error::ParserError, keywords::Keyword, parser::Parser,
+    tokens::Token,
 };
 
 impl<'a, D: Dialect> Parser<'a, D> {

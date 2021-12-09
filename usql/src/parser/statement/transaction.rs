@@ -2,11 +2,8 @@
 use alloc::{vec, vec::Vec};
 
 use crate::{
-    ast::statement::*,
-    dialect::Dialect,
-    keywords::Keyword,
-    lexer::Token,
-    parser::{error::ParserError, Parser},
+    ast::statement::*, dialect::Dialect, error::ParserError, keywords::Keyword, parser::Parser,
+    tokens::Token,
 };
 
 impl<'a, D: Dialect> Parser<'a, D> {
@@ -129,7 +126,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::error::parse_error;
+    use crate::error::parse_error;
 
     #[test]
     fn parse_start_transaction_stmt() -> Result<(), ParserError> {

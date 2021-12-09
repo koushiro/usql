@@ -4,12 +4,10 @@ use alloc::{boxed::Box, format, string::String, vec};
 use crate::{
     ast::types::*,
     dialect::Dialect,
+    error::{parse_error, ParserError},
     keywords::Keyword,
-    lexer::{Token, Word},
-    parser::{
-        error::{parse_error, ParserError},
-        Parser,
-    },
+    parser::Parser,
+    tokens::{Token, Word},
 };
 
 impl<'a, D: Dialect> Parser<'a, D> {
