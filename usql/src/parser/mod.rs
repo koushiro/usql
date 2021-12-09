@@ -1,13 +1,13 @@
-#[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, format, vec, vec::Vec};
-use core::fmt::Display;
-
 mod error;
 mod peek;
 
 mod expression;
 mod statement;
 mod types;
+
+#[cfg(not(feature = "std"))]
+use alloc::{boxed::Box, format, vec, vec::Vec};
+use core::fmt::Display;
 
 use crate::{
     dialect::Dialect,

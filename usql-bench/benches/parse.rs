@@ -14,7 +14,7 @@ fn parse(c: &mut Criterion) {
     });
     group.bench_function("usql query1", |b| {
         use usql::{lexer::Lexer, parser::Parser};
-        let dialect = usql::core::ansi::AnsiDialect::default();
+        let dialect = usql::ansi::AnsiDialect::default();
         let tokens = Lexer::new(&dialect, query).tokenize().unwrap();
         b.iter(|| {
             let _stmt = black_box(Parser::new_with_tokens(&dialect, tokens.clone()).parse_select_stmt().unwrap());
@@ -43,7 +43,7 @@ fn parse(c: &mut Criterion) {
     });
     group.bench_function("usql query2", |b| {
         use usql::{lexer::Lexer, parser::Parser};
-        let dialect = usql::core::ansi::AnsiDialect::default();
+        let dialect = usql::ansi::AnsiDialect::default();
         let tokens = Lexer::new(&dialect, query).tokenize().unwrap();
         b.iter(|| {
             let _stmt = black_box(Parser::new_with_tokens(&dialect, tokens.clone()).parse_select_stmt().unwrap());
