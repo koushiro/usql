@@ -138,6 +138,8 @@ pub enum TableConstraint {
         columns: Vec<Ident>,
         is_primary: bool,
     },
+    /// `CHECK (<search condition>)`
+    Check(Box<Expr>),
     /// ```txt
     /// FOREIGN KEY (<referencing columns>) REFERENCES <table> [ (<referenced columns>) ]
     /// [
@@ -159,8 +161,6 @@ pub enum TableConstraint {
         /// `ON DELETE` referential triggered action.
         on_delete: Option<ReferentialAction>,
     },
-    /// `CHECK (<search condition>)`
-    Check(Box<Expr>),
 }
 
 impl fmt::Display for TableConstraint {
@@ -175,6 +175,7 @@ impl fmt::Display for TableConstraint {
                 if *is_primary { "PRIMARY KEY" } else { "UNIQUE" },
                 display_comma_separated(columns)
             ),
+            Self::Check(expr) => write!(f, "CHECK ({})", expr),
             Self::ForeignKey {
                 referencing_columns,
                 table,
@@ -203,7 +204,6 @@ impl fmt::Display for TableConstraint {
                 }
                 Ok(())
             }
-            Self::Check(expr) => write!(f, "CHECK ({})", expr),
         }
     }
 }
@@ -218,10 +218,6 @@ pub struct ColumnDef {
     pub data_type: DataType,
     /// Column constraints.
     pub constraints: Vec<ColumnConstraintDef>,
-    /// Default clause.
-    pub default: Option<Literal>,
-    /// Collation name.
-    pub collation: Option<ObjectName>,
 }
 
 impl fmt::Display for ColumnDef {
@@ -229,12 +225,6 @@ impl fmt::Display for ColumnDef {
         write!(f, "{} {}", self.name, self.data_type)?;
         for constraint in &self.constraints {
             write!(f, " {}", constraint)?;
-        }
-        if let Some(default) = &self.default {
-            write!(f, " DEFAULT {}", default)?;
-        }
-        if let Some(collation) = &self.collation {
-            write!(f, " COLLATE {}", collation)?;
         }
         Ok(())
     }
@@ -272,6 +262,12 @@ pub enum ColumnConstraint {
     /// `UNIQUE | PRIMARY KEY`
     #[doc(hidden)]
     Unique { is_primary: bool },
+    /// `DEFAULT <literal>`
+    Default(Literal),
+    /// `COLLATE <collation name>`
+    Collation(ObjectName),
+    /// `CHECK (<search condition>)`
+    Check(Box<Expr>),
     /// ```txt
     /// REFERENCES <table> [ (<referenced columns>) ]
     /// [
@@ -291,8 +287,6 @@ pub enum ColumnConstraint {
         /// `ON DELETE` referential triggered action.
         on_delete: Option<ReferentialAction>,
     },
-    /// `CHECK (<search condition>)`
-    Check(Box<Expr>),
 }
 
 impl fmt::Display for ColumnConstraint {
@@ -307,6 +301,9 @@ impl fmt::Display for ColumnConstraint {
                     f.write_str("UNIQUE")
                 }
             }
+            Self::Default(default) => write!(f, "DEFAULT {}", default),
+            Self::Collation(collation) => write!(f, "COLLATE {}", collation),
+            Self::Check(expr) => write!(f, "CHECK ({})", expr),
             Self::References {
                 table,
                 referenced_columns,
@@ -329,7 +326,6 @@ impl fmt::Display for ColumnConstraint {
                 }
                 Ok(())
             }
-            Self::Check(expr) => write!(f, "CHECK ({})", expr),
         }
     }
 }
@@ -442,7 +438,7 @@ impl fmt::Display for LikeOption {
 /// The `ALTER TABLE` statement.
 ///
 /// ```txt
-/// ALTER TABLE <table name> <action>
+/// ALTER TABLE [ IF EXISTS ] <table name> <action>
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -568,14 +564,14 @@ pub struct CreateViewStmt {
     ///
     /// **NOTE: PostgreSQL/MySQL specific**
     pub or_replace: bool,
-    /// Flag indicates that check if the view does not exists.
-    ///
-    /// **NOTE: SQLite specific**
-    pub if_not_exists: bool,
     /// Flag indicates that if the view is a recursive view.
     ///
     /// **NOTE: MySQL/SQLite not support**
     pub recursive: bool,
+    /// Flag indicates that check if the view does not exists.
+    ///
+    /// **NOTE: SQLite specific**
+    pub if_not_exists: bool,
     /// Viewed table name.
     pub name: ObjectName,
     /// Viewed columns.
@@ -592,9 +588,9 @@ impl fmt::Display for CreateViewStmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "CREATE {recursive}{or_replace} VIEW {if_not_exists}{view_name} ({columns}) AS {query}",
-            recursive = if self.recursive { "RECURSIVE " } else { "" },
+            "CREATE {or_replace}{recursive} VIEW {if_not_exists}{view_name} ({columns}) AS {query}",
             or_replace = if self.or_replace { "OR REPLACE " } else { "" },
+            recursive = if self.recursive { "RECURSIVE " } else { "" },
             if_not_exists = if self.if_not_exists { "IF NOT EXISTS " } else { "" },
             view_name = self.name,
             columns = display_comma_separated(&self.columns),
@@ -646,10 +642,6 @@ pub struct CreateDomainStmt {
     pub data_type: DataType,
     /// Domain constraints.
     pub constraints: Vec<DomainConstraintDef>,
-    /// Default clause.
-    pub default: Option<Literal>,
-    /// Collation name.
-    pub collation: Option<ObjectName>,
 }
 
 impl fmt::Display for CreateDomainStmt {
@@ -662,12 +654,6 @@ impl fmt::Display for CreateDomainStmt {
         )?;
         if !self.constraints.is_empty() {
             write!(f, " {}", display_separated(&self.constraints, " "))?;
-        }
-        if let Some(default) = &self.default {
-            write!(f, " DEFAULT {}", default)?;
-        }
-        if let Some(collation) = &self.collation {
-            write!(f, " COLLATE {}", collation)?;
         }
         Ok(())
     }
@@ -702,6 +688,10 @@ pub enum DomainConstraint {
     Null,
     /// `NOT NULL`
     NotNull,
+    /// `DEFAULT <literal>`
+    Default(Literal),
+    /// `COLLATE <collation name>`
+    Collation(ObjectName),
     /// `CHECK (<search condition>)`
     Check(Box<Expr>),
 }
@@ -711,6 +701,8 @@ impl fmt::Display for DomainConstraint {
         match self {
             Self::Null => f.write_str("NULL"),
             Self::NotNull => f.write_str("NOT NULL"),
+            Self::Default(default) => write!(f, "DEFAULT {}", default),
+            Self::Collation(collation) => write!(f, "COLLATE {}", collation),
             Self::Check(expr) => write!(f, "CHECK ({})", expr),
         }
     }
@@ -765,6 +757,7 @@ impl fmt::Display for AlterDomainAction {
 /// The `CREATE TYPE` statement.
 ///
 /// ```txt
+/// CREATE TYPE <type name> AS <type definition>
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -979,12 +972,12 @@ impl fmt::Display for CreateIndexStmt {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DropStmt {
-    /// Flag indicates that check if the `schema/table/view/domain/type/database/index` exists. (Non-standard)
-    pub if_exists: bool,
     /// Object type.
     pub ty: ObjectType,
+    /// Flag indicates that check if the `schema/table/view/domain/type/database/index` exists. (Non-standard)
+    pub if_exists: bool,
     /// One or more object names to drop. (ANSI SQL requires exactly one)
-    pub name: Vec<ObjectName>,
+    pub names: Vec<ObjectName>,
     /// Drop behavior.
     pub behavior: Option<DropBehavior>,
 }
@@ -996,7 +989,7 @@ impl fmt::Display for DropStmt {
             "DROP {object_type} {if_exists}{object_name}",
             object_type = self.ty,
             if_exists = if self.if_exists { "IF EXISTS " } else { "" },
-            object_name = display_comma_separated(&self.name),
+            object_name = display_comma_separated(&self.names),
         )?;
         if let Some(behavior) = &self.behavior {
             write!(f, " {}", behavior)?;
@@ -1013,7 +1006,7 @@ pub enum ObjectType {
     Schema,
     Table,
     View,
-    DOMAIN,
+    Domain,
     Type,
     Database,
     Index,
@@ -1025,7 +1018,7 @@ impl fmt::Display for ObjectType {
             Self::Schema => "SCHEMA",
             Self::Table => "TABLE",
             Self::View => "VIEW",
-            Self::DOMAIN => "DOMAIN",
+            Self::Domain => "DOMAIN",
             Self::Type => "TYPE",
             Self::Database => "DATABASE",
             Self::Index => "INDEX",
