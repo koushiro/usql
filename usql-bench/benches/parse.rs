@@ -5,19 +5,23 @@ fn parse(c: &mut Criterion) {
 
     let query = "SELECT * FROM table1 WHERE id = 1";
     group.bench_function("sqlparser query1", |b| {
-        use sqlparser::{tokenizer::Tokenizer, parser::Parser};
+        use sqlparser::{parser::Parser, tokenizer::Tokenizer};
         let dialect = sqlparser::dialect::AnsiDialect {};
         let tokens = Tokenizer::new(&dialect, query).tokenize().unwrap();
         b.iter(|| {
-            let _stmt = black_box(Parser::new( tokens.clone(), &dialect).parse_query().unwrap());
+            let _stmt = black_box(Parser::new(tokens.clone(), &dialect).parse_query().unwrap());
         });
     });
     group.bench_function("usql query1", |b| {
-        use usql::{lexer::Lexer, parser::Parser};
-        let dialect = usql::core::ansi::AnsiDialect::default();
+        use usql::{ansi::AnsiDialect, Lexer, Parser};
+        let dialect = AnsiDialect::default();
         let tokens = Lexer::new(&dialect, query).tokenize().unwrap();
         b.iter(|| {
-            let _stmt = black_box(Parser::new_with_tokens(&dialect, tokens.clone()).parse_select_stmt().unwrap());
+            let _stmt = black_box(
+                Parser::new_with_tokens(&dialect, tokens.clone())
+                    .parse_select_stmt()
+                    .unwrap(),
+            );
         });
     });
 
@@ -34,19 +38,23 @@ fn parse(c: &mut Criterion) {
         FETCH FIRST 100 ROWS ONLY
         ";
     group.bench_function("sqlparser query2", |b| {
-        use sqlparser::{tokenizer::Tokenizer, parser::Parser};
+        use sqlparser::{parser::Parser, tokenizer::Tokenizer};
         let dialect = sqlparser::dialect::AnsiDialect {};
         let tokens = Tokenizer::new(&dialect, query).tokenize().unwrap();
         b.iter(|| {
-            let _stmt = black_box(Parser::new( tokens.clone(), &dialect).parse_query().unwrap());
+            let _stmt = black_box(Parser::new(tokens.clone(), &dialect).parse_query().unwrap());
         });
     });
     group.bench_function("usql query2", |b| {
-        use usql::{lexer::Lexer, parser::Parser};
-        let dialect = usql::core::ansi::AnsiDialect::default();
+        use usql::{ansi::AnsiDialect, Lexer, Parser};
+        let dialect = AnsiDialect::default();
         let tokens = Lexer::new(&dialect, query).tokenize().unwrap();
         b.iter(|| {
-            let _stmt = black_box(Parser::new_with_tokens(&dialect, tokens.clone()).parse_select_stmt().unwrap());
+            let _stmt = black_box(
+                Parser::new_with_tokens(&dialect, tokens.clone())
+                    .parse_select_stmt()
+                    .unwrap(),
+            );
         });
     });
 }

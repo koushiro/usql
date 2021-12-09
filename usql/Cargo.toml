@@ -12,17 +12,13 @@ repository = "https://github.com/koushiro/usql"
 description = "Universal SQL Lexer and Parser"
 
 [features]
-default = ["std"]
+default = ["std", "ansi", "mysql", "postgres", "sqlite"]
 std = []
-serde = ["usql-ast/serde", "usql-core/serde"]
 
-ansi = ["usql-ast/ansi", "usql-core/ansi", "usql-parser/ansi"]
-mysql = ["usql-ast/mysql", "usql-core/mysql", "usql-parser/mysql"]
-postgres = ["usql-ast/postgres", "usql-core/postgres", "usql-parser/postgres"]
-sqlite = ["usql-ast/sqlite", "usql-core/sqlite", "usql-parser/sqlite"]
+ansi = []
+mysql = []
+postgres = []
+sqlite = []
 
 [dependencies]
-usql-ast = { path = "../usql-ast", default-features = false }
-usql-core = { path = "../usql-core", default-features = false }
-usql-lexer = { path = "../usql-lexer", default-features = false }
-usql-parser = { path = "../usql-parser", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
