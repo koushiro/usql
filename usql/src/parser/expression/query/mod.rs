@@ -8,8 +8,8 @@ use crate::{
     dialect::Dialect,
     error::ParserError,
     keywords::Keyword,
-    lexer::Token,
     parser::Parser,
+    tokens::Token,
 };
 
 impl<'a, D: Dialect> Parser<'a, D> {

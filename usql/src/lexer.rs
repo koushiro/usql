@@ -7,10 +7,10 @@ use alloc::{
 };
 use core::{iter::Peekable, str::Chars};
 
-pub use crate::{
+use crate::{
     dialect::{Dialect, DialectLexerConf},
     error::{LexerError, Location},
-    tokens::{Comment, Token, Whitespace, Word},
+    tokens::{Comment, Token, Whitespace},
 };
 
 /// SQL Lexer

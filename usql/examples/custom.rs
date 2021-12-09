@@ -1,7 +1,5 @@
 use usql::{
-    define_keyword,
-    lexer::{Lexer, LexerError},
-    CustomDialect, Dialect, DialectLexerConf, DialectParserConf,
+    define_keyword, CustomDialect, Dialect, DialectLexerConf, DialectParserConf, Lexer, LexerError,
 };
 
 pub type MyDialect1 = CustomDialect<MyKeyword, MyDialect1LexerConfig, MyDialectParserConfig>;

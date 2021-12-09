@@ -1,7 +1,4 @@
-use usql::{
-    lexer::{Lexer, LexerError},
-    postgres::PostgresDialect,
-};
+use usql::{postgres::PostgresDialect, Lexer, LexerError};
 
 fn main() -> Result<(), LexerError> {
     let dialect = PostgresDialect::default();
