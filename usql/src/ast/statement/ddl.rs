@@ -4,55 +4,9 @@ use core::fmt;
 
 use crate::ast::{
     expression::*,
-    statement::Stmt,
     types::*,
     utils::{display_comma_separated, display_separated},
 };
-
-// ============================================================================
-// Schema definition and manipulation
-// ============================================================================
-
-/// The `CREATE SCHEMA` statement.
-///
-/// ```txt
-/// CREATE SCHEMA [ IF NOT EXISTS ]
-///     [ <schema name> |  AUTHORIZATION <authorization> |  <schema name> AUTHORIZATION <authorization> ]
-/// ```
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct CreateSchemaStmt {
-    /// Flag indicates that check if the schema does not exists.
-    ///
-    /// **NOTE: PostgreSQL specific**
-    pub if_not_exists: bool,
-    /// Schema name.
-    pub name: Option<ObjectName>,
-    /// Authorization clause.
-    pub authorization: Option<Ident>,
-    /// Schema element defines an object to be created within the schema.
-    pub elements: Vec<Stmt>,
-}
-
-impl fmt::Display for CreateSchemaStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("CREATE SCHEMA")?;
-        if self.if_not_exists {
-            f.write_str(" IF NOT EXISTS")?;
-        }
-        if let Some(name) = &self.name {
-            write!(f, " {}", name)?;
-        }
-        if let Some(authorization) = &self.authorization {
-            write!(f, " AUTHORIZATION {}", authorization)?;
-        }
-        if !self.elements.is_empty() {
-            write!(f, "{}", display_separated(&self.elements, "\n"))?;
-        }
-        Ok(())
-    }
-}
 
 // ============================================================================
 // Table definition and manipulation
@@ -61,63 +15,131 @@ impl fmt::Display for CreateSchemaStmt {
 /// The `CREATE TABLE` statement.
 ///
 /// ```txt
-/// CREATE [ TEMPORARY ] TABLE [ IF NOT EXISTS ] <table name> ([
-///   { <columns> | <table constraint> | LIKE <source table> [ <like option> ... ] } [, ... ]
-/// ])
+/// <table definition> ::=
+///     CREATE [ <table scope> ] TABLE [ IF NOT EXISTS ] <table name> <table contents source>
+///         [ WITH SYSTEM VERSIONING ]
+///         [ ON COMMIT { PRESERVE | DELETE } ROWS ]
 ///
-/// CREATE [ TEMPORARY ] TABLE [ IF NOT EXISTS ] <table name> [ (<columns>) ] AS <query>
+/// <table scope> ::= { GLOBAL | LOCAL } TEMPORARY
+/// <table contents source> ::=
+///     ( <table element> [, ...] )
+///     | <typed table clause>
+///     | [ ( <column> [, ...] ) ] AS ( <query expression> ) { WITH NO DATA | WITH DATA }
+///
+/// <table element> ::= <column definition> | <table constraint definition> | <like clause>
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CreateTableStmt {
-    /// Flag indicates that if the table is temporary.
-    pub temporary: bool,
+    /// Table scope.
+    pub scope: Option<TableScope>,
     /// Flag indicates that check if the table does not exists.
     pub if_not_exists: bool,
     /// Table name.
     pub name: ObjectName,
-    /// Columns.
-    pub columns: Vec<ColumnDef>,
-    /// Table constraints.
-    pub constraints: Vec<TableConstraintDef>,
-    /// `LIKE` clause.
-    pub like: Option<Like>,
-    /// `AS <query>` clause.
-    pub query: Option<Box<Query>>,
+    /// Table contents source.
+    pub content: TableContent,
+    pub on_commit: Option<OnCommit>,
 }
 
 impl fmt::Display for CreateTableStmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "CREATE {temporary}TABLE {if_not_exists}{table_name}",
-            temporary = if self.temporary { "TEMPORARY " } else { "" },
-            if_not_exists = if self.if_not_exists { "IF NOT EXISTS " } else { "" },
-            table_name = self.name,
-        )?;
-
-        if let Some(like) = &self.like {
-            write!(f, " LIKE {}", like)?;
+        f.write_str("CREATE")?;
+        if let Some(scope) = &self.scope {
+            write!(f, " {}", scope)?;
         }
-        if let Some(query) = &self.query {
-            write!(f, " AS {}", query)?;
+        f.write_str(" TABLE")?;
+        if self.if_not_exists {
+            f.write_str(" IF NOT EXISTS")?;
+        }
+        write!(f, " {}", self.name)?;
+        write!(f, " {}", self.content)?;
+        if let Some(on_commit) = &self.on_commit {
+            write!(f, " {}", on_commit)?;
         }
         Ok(())
     }
 }
 
-/// SQL table constraint definition.
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+/// The scope of table definition.
+///
+/// ```txt
+/// <table scope> ::= { GLOBAL | LOCAL } TEMPORARY
+/// ```
+#[doc(hidden)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct TableConstraintDef {
-    /// Table constraint name.
-    pub name: Option<Ident>,
-    /// Table constraint kind.
-    pub constraint: TableConstraint,
+pub enum TableScope {
+    Local,
+    Global,
 }
 
-impl fmt::Display for TableConstraintDef {
+impl fmt::Display for TableScope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TableScope::Local => write!(f, "LOCAL TEMPORARY"),
+            TableScope::Global => write!(f, "GLOBAL TEMPORARY"),
+        }
+    }
+}
+
+/// The contents source of table definition.
+///
+/// ```txt
+/// <table content> ::=
+///     ( <column definition> [, ...] [, ] [ <table constraint definition> [, ...] ] )
+///     | LIKE <table name> [ <like option> [, ...] ]
+///     | AS { ( <query expression> ) | <query expression> }
+/// ```
+#[doc(hidden)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum TableContent {
+    Definition {
+        /// Columns.
+        columns: Vec<ColumnDef>,
+        /// Table constraints.
+        constraints: Vec<TableConstraint>,
+    },
+    Like(TableLike),
+    SubQuery(Box<Query>),
+}
+
+impl fmt::Display for TableContent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Definition {
+                columns,
+                constraints,
+            } => {
+                f.write_str("(")?;
+                write!(f, "{}", display_comma_separated(columns))?;
+                if !constraints.is_empty() {
+                    f.write_str(", ")?;
+                }
+                if !constraints.is_empty() {
+                    write!(f, "{}", display_comma_separated(constraints))?;
+                }
+                f.write_str(")")
+            }
+            Self::Like(like) => write!(f, "{}", like),
+            Self::SubQuery(query) => write!(f, "AS {}", query),
+        }
+    }
+}
+
+/// SQL constraint definition.
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ConstraintDef<C> {
+    /// Constraint name.
+    pub name: Option<ObjectName>,
+    /// Constraint kind.
+    pub constraint: C,
+}
+
+impl<C: fmt::Display> fmt::Display for ConstraintDef<C> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -128,87 +150,24 @@ impl fmt::Display for TableConstraintDef {
     }
 }
 
-/// SQL table constraint kind.
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum TableConstraint {
-    /// `UNIQUE | PRIMARY KEY (<columns>)`
-    #[doc(hidden)]
-    Unique {
-        columns: Vec<Ident>,
-        is_primary: bool,
-    },
-    /// `CHECK (<search condition>)`
-    Check(Box<Expr>),
-    /// ```txt
-    /// FOREIGN KEY (<referencing columns>) REFERENCES <table> [ (<referenced columns>) ]
-    /// [
-    ///     [ ON UPDATE <referential action> ] [ ON DELETE <referential action> ] |
-    ///     [ ON DELETE <referential action> ] [ ON UPDATE <referential action> ]
-    /// ]
-    /// ```
-    ForeignKey {
-        /// Referencing column list.
-        referencing_columns: Vec<Ident>,
-        /// Foreign table name.
-        table: ObjectName,
-        /// Referenced column list.
-        referenced_columns: Vec<Ident>,
-        /// Match type.
-        match_type: Option<ReferentialMatchType>,
-        /// `ON UPDATE` referential triggered action.
-        on_update: Option<ReferentialAction>,
-        /// `ON DELETE` referential triggered action.
-        on_delete: Option<ReferentialAction>,
-    },
-}
-
-impl fmt::Display for TableConstraint {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Unique {
-                columns,
-                is_primary,
-            } => write!(
-                f,
-                "{} ({})",
-                if *is_primary { "PRIMARY KEY" } else { "UNIQUE" },
-                display_comma_separated(columns)
-            ),
-            Self::Check(expr) => write!(f, "CHECK ({})", expr),
-            Self::ForeignKey {
-                referencing_columns,
-                table,
-                referenced_columns,
-                match_type,
-                on_update,
-                on_delete,
-            } => {
-                write!(
-                    f,
-                    "FOREIGN KEY ({}) REFERENCES {}",
-                    display_comma_separated(referencing_columns),
-                    table,
-                )?;
-                if !referenced_columns.is_empty() {
-                    write!(f, "({})", display_comma_separated(referenced_columns))?;
-                }
-                if let Some(match_type) = match_type {
-                    write!(f, " MATCH {}", match_type)?;
-                }
-                if let Some(action) = on_update {
-                    write!(f, " ON UPDATE {}", action)?;
-                }
-                if let Some(action) = on_delete {
-                    write!(f, " ON DELETE {}", action)?;
-                }
-                Ok(())
+fn display_constraint_name(name: &'_ Option<ObjectName>) -> impl fmt::Display + '_ {
+    struct ConstraintName<'a>(&'a Option<ObjectName>);
+    impl<'a> fmt::Display for ConstraintName<'a> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            if let Some(name) = self.0 {
+                write!(f, "CONSTRAINT {} ", name)?;
             }
+            Ok(())
         }
     }
+    ConstraintName(name)
 }
 
 /// SQL column definition.
+///
+/// ```txt
+/// <column definition> ::= <column name> <data type> [ <column constraint definition> [, ...] ]
+/// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ColumnDef {
@@ -231,27 +190,36 @@ impl fmt::Display for ColumnDef {
 }
 
 /// SQL column constraint definition.
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct ColumnConstraintDef {
-    /// Column constraint name.
-    pub name: Option<Ident>,
-    /// Column constraint kind.
-    pub constraint: ColumnConstraint,
-}
-
-impl fmt::Display for ColumnConstraintDef {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}{}",
-            display_constraint_name(&self.name),
-            self.constraint
-        )
-    }
-}
+///
+/// ```txt
+/// <column constraint definition> ::= [ CONSTRAINT <constraint name> ] <column constraint>
+/// ```
+pub type ColumnConstraintDef = ConstraintDef<ColumnConstraint>;
 
 /// SQL column constraint kind.
+///
+/// ```txt
+/// <column constraint> ::=
+///     NULL
+///     | NOT NULL
+///     | <unique specification>
+///     | <check constraint definition>
+///     | <references specification>
+///     | <default specification>
+///     | <collation specification>
+///
+/// <unique specification> ::= UNIQUE | PRIMARY KEY
+///
+/// <check constraint definition> ::= CHECK ( <search condition> )
+///
+/// <references specification> ::= REFERENCES <table name> [ ( <column name> [, ...] ) ]
+///     [ MATCH { FULL | PARTIAL | SIMPLE } ]
+///     [ <referential triggered action> ]
+/// <referential triggered action> ::= <update rule> [ <delete rule> ] | <delete rule> [ <update rule> ]
+/// <update rule> ::= ON UPDATE <referential action>
+/// <delete rule> ::= ON DELETE <referential action>
+/// <referential action> ::= CASCADE | SET NULL | SET DEFAULT | RESTRICT | NO ACTION
+/// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ColumnConstraint {
@@ -259,27 +227,17 @@ pub enum ColumnConstraint {
     Null,
     /// `NOT NULL`
     NotNull,
-    /// `UNIQUE | PRIMARY KEY`
+    /// Unique specification
     #[doc(hidden)]
     Unique { is_primary: bool },
-    /// `DEFAULT <literal>`
-    Default(Literal),
-    /// `COLLATE <collation name>`
-    Collation(ObjectName),
-    /// `CHECK (<search condition>)`
+    /// Check constraint definition
     Check(Box<Expr>),
-    /// ```txt
-    /// REFERENCES <table> [ (<referenced columns>) ]
-    /// [
-    ///     [ ON UPDATE <referential action> ] [ ON DELETE <referential action> ] |
-    ///     [ ON DELETE <referential action> ] [ ON UPDATE <referential action> ]
-    /// ]
-    /// ```
+    /// Referential specification
     References {
         /// Foreign table name.
         table: ObjectName,
         /// Referenced column list.
-        referenced_columns: Vec<Ident>,
+        referenced_columns: Option<Vec<Ident>>,
         /// Match type.
         match_type: Option<ReferentialMatchType>,
         /// `ON UPDATE` referential triggered action.
@@ -287,6 +245,10 @@ pub enum ColumnConstraint {
         /// `ON DELETE` referential triggered action.
         on_delete: Option<ReferentialAction>,
     },
+    /// Default definition
+    Default(Literal),
+    /// Collation specification
+    Collation(ObjectName),
 }
 
 impl fmt::Display for ColumnConstraint {
@@ -301,8 +263,6 @@ impl fmt::Display for ColumnConstraint {
                     f.write_str("UNIQUE")
                 }
             }
-            Self::Default(default) => write!(f, "DEFAULT {}", default),
-            Self::Collation(collation) => write!(f, "COLLATE {}", collation),
             Self::Check(expr) => write!(f, "CHECK ({})", expr),
             Self::References {
                 table,
@@ -312,8 +272,111 @@ impl fmt::Display for ColumnConstraint {
                 on_delete,
             } => {
                 write!(f, "REFERENCES {}", table)?;
-                if !referenced_columns.is_empty() {
-                    write!(f, "({})", display_comma_separated(referenced_columns))?;
+                if let Some(referenced_columns) = referenced_columns {
+                    write!(f, " ({})", display_comma_separated(referenced_columns))?;
+                }
+                if let Some(match_type) = match_type {
+                    write!(f, " MATCH {}", match_type)?;
+                }
+                if let Some(action) = on_update {
+                    write!(f, " ON UPDATE {}", action)?;
+                }
+                if let Some(action) = on_delete {
+                    write!(f, " ON DELETE {}", action)?;
+                }
+                Ok(())
+            }
+            Self::Default(default) => write!(f, "DEFAULT {}", default),
+            Self::Collation(collation) => write!(f, "COLLATE {}", collation),
+        }
+    }
+}
+
+/// SQL table constraint definition.
+///
+/// ```txt
+/// <table constraint definition> ::= [ CONSTRAINT <constraint name> ] <table constraint>
+/// ```
+pub type TableConstraintDef = ConstraintDef<TableConstraint>;
+
+/// SQL table constraint kind.
+///
+/// ```txt
+/// <table constraint> ::=
+///     <unique constraint definition>
+///     | <check constraint definition>
+///     | <referential constraint definition>
+///
+/// <unique constraint definition> ::= { UNIQUE | PRIMARY KEY } ( <column name> [, ...] )
+///
+/// <check constraint definition> ::= CHECK ( <search condition> )
+///
+/// <referential constraint definition> ::= FOREIGN KEY ( <column name> [, ...] ) <references specification>
+/// <references specification> ::= REFERENCES <table name> [ ( <column name> [, ...] ) ]
+///     [ MATCH { FULL | PARTIAL | SIMPLE } ]
+///     [ <referential triggered action> ]
+/// <referential triggered action> ::= <update rule> [ <delete rule> ] | <delete rule> [ <update rule> ]
+/// <update rule> ::= ON UPDATE <referential action>
+/// <delete rule> ::= ON DELETE <referential action>
+/// <referential action> ::= CASCADE | SET NULL | SET DEFAULT | RESTRICT | NO ACTION
+/// ``
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum TableConstraint {
+    /// Unique constraint definition
+    #[doc(hidden)]
+    Unique {
+        is_primary: bool,
+        columns: Vec<Ident>,
+    },
+    /// Check constraint definition
+    Check(Box<Expr>),
+    /// Referential constraint definition
+    ForeignKey {
+        /// Referencing column list.
+        referencing_columns: Vec<Ident>,
+        /// Foreign table name.
+        table: ObjectName,
+        /// Referenced column list.
+        referenced_columns: Option<Vec<Ident>>,
+        /// Match type.
+        match_type: Option<ReferentialMatchType>,
+        /// `ON UPDATE` referential triggered action.
+        on_update: Option<ReferentialAction>,
+        /// `ON DELETE` referential triggered action.
+        on_delete: Option<ReferentialAction>,
+    },
+}
+
+impl fmt::Display for TableConstraint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unique {
+                is_primary,
+                columns,
+            } => write!(
+                f,
+                "{} ({})",
+                if *is_primary { "PRIMARY KEY" } else { "UNIQUE" },
+                display_comma_separated(columns)
+            ),
+            Self::Check(expr) => write!(f, "CHECK ({})", expr),
+            Self::ForeignKey {
+                referencing_columns,
+                table,
+                referenced_columns,
+                match_type,
+                on_update,
+                on_delete,
+            } => {
+                write!(
+                    f,
+                    "FOREIGN KEY ({}) REFERENCES {}",
+                    display_comma_separated(referencing_columns),
+                    table,
+                )?;
+                if let Some(referenced_columns) = referenced_columns {
+                    write!(f, " ({})", display_comma_separated(referenced_columns))?;
                 }
                 if let Some(match_type) = match_type {
                     write!(f, " MATCH {}", match_type)?;
@@ -374,36 +437,23 @@ impl fmt::Display for ReferentialAction {
     }
 }
 
-fn display_constraint_name(name: &'_ Option<Ident>) -> impl fmt::Display + '_ {
-    struct ConstraintName<'a>(&'a Option<Ident>);
-    impl<'a> fmt::Display for ConstraintName<'a> {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            if let Some(name) = self.0 {
-                write!(f, "CONSTRAINT {} ", name)?;
-            }
-            Ok(())
-        }
-    }
-    ConstraintName(name)
-}
-
 /// The `LIKE` clause is used in `CREATE TABLE` statement.
 /// It specifies a table from which the new table automatically copies all
 /// column names, their data types, and their not-null constraints.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Like {
+pub struct TableLike {
     /// Source table name.
     pub table: ObjectName,
     /// Like options.
-    pub options: Vec<LikeOption>,
+    pub options: Option<Vec<LikeOption>>,
 }
 
-impl fmt::Display for Like {
+impl fmt::Display for TableLike {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.table)?;
-        for option in &self.options {
-            write!(f, " {}", option)?
+        write!(f, "LIKE {}", self.table)?;
+        if let Some(options) = &self.options {
+            write!(f, " {}", display_comma_separated(options))?;
         }
         Ok(())
     }
@@ -435,10 +485,30 @@ impl fmt::Display for LikeOption {
     }
 }
 
+/// On commit clause of `CREATE TABLE` statement.
+#[doc(hidden)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum OnCommit {
+    PreserveRows,
+    DeleteRows,
+    Drop,
+}
+
+impl fmt::Display for OnCommit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::PreserveRows => "PRESERVE ROWS",
+            Self::DeleteRows => "DELETE ROWS",
+            Self::Drop => "DROP",
+        })
+    }
+}
+
 /// The `ALTER TABLE` statement.
 ///
 /// ```txt
-/// ALTER TABLE [ IF EXISTS ] <table name> <action>
+/// <alter table statement> ::= ALTER TABLE <table name> [ IF EXISTS ] <alter table action>
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -463,7 +533,21 @@ impl fmt::Display for AlterTableStmt {
     }
 }
 
-/// The alter action of `ALTER TABLE` statement.
+/// The alter action of table.
+///
+/// ```txt
+/// <alter table action> ::=
+///     <add column definition>
+///     | <alter column definition>
+///     | <drop column definition>
+///     | <add table constraint definition>
+///     | <alter table constraint definition>
+///     | <drop table constraint definition>
+///     | <add table period definition>
+///     | <drop table period definition>
+///     | <add system versioning clause>
+///     | <drop system versioning clause>
+/// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -479,18 +563,6 @@ pub enum AlterTableAction {
         if_exists: bool,
         /// Column name.
         name: Ident,
-        /// Drop behavior.
-        drop_behavior: Option<DropBehavior>,
-    },
-    AddTableConstraint {
-        /// Constraint definition.
-        constraint: TableConstraintDef,
-    },
-    DropTableConstraint {
-        /// Flag indicates that check if the table constraint exists. (Non-standard)
-        if_exists: bool,
-        /// Constraint name.
-        name: ObjectName,
         /// Drop behavior.
         drop_behavior: Option<DropBehavior>,
     },
@@ -524,23 +596,6 @@ impl fmt::Display for AlterTableAction {
                 }
                 Ok(())
             }
-            Self::AddTableConstraint { constraint } => write!(f, "ADD {}", constraint),
-            Self::DropTableConstraint {
-                if_exists,
-                name,
-                drop_behavior,
-            } => {
-                write!(
-                    f,
-                    "DROP CONSTRAINT {if_exists}{name}",
-                    if_exists = if *if_exists { "IF EXISTS " } else { "" },
-                    name = name,
-                )?;
-                if let Some(behavior) = drop_behavior {
-                    write!(f, " {}", behavior)?;
-                }
-                Ok(())
-            }
         }
     }
 }
@@ -552,9 +607,8 @@ impl fmt::Display for AlterTableAction {
 /// The `CREATE VIEW` statement.
 ///
 /// ```txt
-/// CREATE [ OR REPLACE ] [ RECURSIVE ] VIEW [ IF NOT EXISTS ] <view name> [ (columns) ]
-///     AS <query>
-///     [ WITH [ CASCADED | LOCAL ] CHECK OPTION ]
+/// <view definition> ::= CREATE [ RECURSIVE ] VIEW <table name> <view specification>
+///     AS <query expression>  [ WITH [ CASCADED | LOCAL ] CHECK OPTION ]
 /// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -575,7 +629,7 @@ pub struct CreateViewStmt {
     /// Viewed table name.
     pub name: ObjectName,
     /// Viewed columns.
-    pub columns: Vec<Ident>,
+    pub columns: Option<Vec<Ident>>,
     /// A SQL query that specifies what to view.
     pub query: Box<Query>,
     /// Check option.
@@ -588,16 +642,22 @@ impl fmt::Display for CreateViewStmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "CREATE {or_replace}{recursive} VIEW {if_not_exists}{view_name} ({columns}) AS {query}",
+            "CREATE {or_replace}{recursive} VIEW {if_not_exists}{view_name}",
             or_replace = if self.or_replace { "OR REPLACE " } else { "" },
             recursive = if self.recursive { "RECURSIVE " } else { "" },
             if_not_exists = if self.if_not_exists { "IF NOT EXISTS " } else { "" },
-            view_name = self.name,
-            columns = display_comma_separated(&self.columns),
-            query = self.query,
+            view_name = self.name
         )?;
+        if let Some(columns) = &self.columns {
+            write!(f, " ({})", display_comma_separated(columns))?;
+        }
+        write!(f, " AS {}", self.query)?;
         if let Some(option) = &self.check_option {
-            write!(f, " WITH {} CHECK OPTION", option)?;
+            f.write_str(match option {
+                ViewCheckOption::Cascaded => " WITH CASCADED CHECK OPTION",
+                ViewCheckOption::Local => " WITH LOCAL CHECK OPTION",
+                ViewCheckOption::None => " WITH CHECK OPTION",
+            })?;
         }
         Ok(())
     }
@@ -610,6 +670,7 @@ impl fmt::Display for CreateViewStmt {
 pub enum ViewCheckOption {
     Cascaded,
     Local,
+    None,
 }
 
 impl fmt::Display for ViewCheckOption {
@@ -617,6 +678,7 @@ impl fmt::Display for ViewCheckOption {
         f.write_str(match self {
             Self::Cascaded => "CASCADED",
             Self::Local => "LOCAL",
+            Self::None => "",
         })
     }
 }
@@ -628,10 +690,7 @@ impl fmt::Display for ViewCheckOption {
 /// The `CREATE DOMAIN` statement.
 ///
 /// ```txt
-/// CREATE DOMAIN <domain name> [ AS ] <type>
-///     [ { [ CONSTRAINT <constraint name> ] NOT NULL | NULL | CHECK (expr) } ... ]
-///     [ DEFAULT <default option> ]
-///     [ COLLATE <collation name> ]
+/// <domain definition> ::= CREATE DOMAIN <domain name> [ AS ] <predefined type> [ <domain constraint> [, ...] ]
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -660,27 +719,22 @@ impl fmt::Display for CreateDomainStmt {
 }
 
 /// SQL domain constraint definition.
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct DomainConstraintDef {
-    /// Domain constraint name.
-    pub name: Option<Ident>,
-    /// Domain constraint kind.
-    pub constraint: DomainConstraint,
-}
-
-impl fmt::Display for DomainConstraintDef {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}{}",
-            display_constraint_name(&self.name),
-            self.constraint
-        )
-    }
-}
+///
+/// ```txt
+/// <domain constraint> ::= [ CONSTRAINT <constraint name> ] <domain constraint definition>
+/// ```
+pub type DomainConstraintDef = ConstraintDef<DomainConstraint>;
 
 /// SQL domain constraint kind.
+///
+/// ```txt
+/// <domain constraint definition> ::=
+///     NULL
+///     | NOT NULL
+///     | <check constraint definition>
+///     | <default definition>
+///     | <collation specification>
+/// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DomainConstraint {
@@ -688,12 +742,12 @@ pub enum DomainConstraint {
     Null,
     /// `NOT NULL`
     NotNull,
+    /// `CHECK (<search condition>)`
+    Check(Box<Expr>),
     /// `DEFAULT <literal>`
     Default(Literal),
     /// `COLLATE <collation name>`
     Collation(ObjectName),
-    /// `CHECK (<search condition>)`
-    Check(Box<Expr>),
 }
 
 impl fmt::Display for DomainConstraint {
@@ -757,47 +811,115 @@ impl fmt::Display for AlterDomainAction {
 /// The `CREATE TYPE` statement.
 ///
 /// ```txt
-/// CREATE TYPE <type name> AS <type definition>
+/// <user-defined type definition> ::= CREATE TYPE <user-defined type body>
+///
+/// <user-defined type body> ::= <user-defined type name>
+///     [ UNDER <super type name> ]
+///     [ AS <representation> ]
+///     [ <type option> [, ...] ]
+///     [ <method specification> [, ...] ]
+///
+/// // Not support now
+/// <method specification> ::= <original method specification> | <overriding method specification>
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CreateTypeStmt {
     /// Type name.
     pub name: ObjectName,
-    /// Type definition.
-    pub definition: Option<TypeDef>,
+    /// Super type name.
+    pub super_name: Option<ObjectName>,
+    /// Type representation.
+    pub representation: Option<TypeRepresentation>,
+    /// Type options.
+    pub options: Option<Vec<TypeOption>>,
 }
 
 impl fmt::Display for CreateTypeStmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "CREATE TYPE {}", self.name)?;
-        if let Some(def) = &self.definition {
-            write!(f, " AS {}", def)?;
+        if let Some(super_type) = &self.super_name {
+            write!(f, " UNDER {}", super_type)?;
+        }
+        if let Some(representation) = &self.representation {
+            write!(f, " AS {}", representation)?;
         }
         Ok(())
     }
 }
 
-/// The user-defined type definition.
+/// The representation of user-defined type
+///
+/// ```txt
+/// <representation> ::= <predefined type> | <collection type> | ( <attribution definition> [, ...] )
+/// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum TypeDef {
+pub enum TypeRepresentation {
     DataType(DataType),
-    MemberList(Vec<TypeAttributeDef>),
+    Attributes(Vec<TypeAttributeDef>),
 }
 
-impl fmt::Display for TypeDef {
+impl fmt::Display for TypeRepresentation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::DataType(ty) => write!(f, "{}", ty),
-            Self::MemberList(attrs) => write!(f, "{}", display_comma_separated(attrs)),
+            Self::Attributes(attrs) => write!(f, "{}", display_comma_separated(attrs)),
+        }
+    }
+}
+
+/// The user-defined type option.
+///
+/// ```txt
+/// <type option> ::=
+///     { INSTANTIABLE | NOT INSTANTIABLE }
+///     | { FINAL | NOT FINAL }
+///     | { REF USING <predefined type> | REF FROM ( <attribute name> [, ...] ) | REF IS SYSTEM GENERATED }
+///     | CAST ( SOURCE AS REF ) WITH <cast to ref identifier>
+///     | CAST ( REF AS SOURCE ) WITH <cast to type identifier>
+///     | CAST ( SOURCE AS DISTINCT ) WITH <cast to distinct identifier>
+///     | CAST ( DISTINCT AS SOURCE ) WITH <cast to source identifier>
+/// ```
+#[doc(hidden)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum TypeOption {
+    Instantiable(bool),
+    Final(bool),
+    RefUsing(DataType),
+    RefFrom(Vec<Ident>),
+    RefIsSystemGenerated,
+    CastToRef(Ident),
+    CastToType(Ident),
+    CastToDistinct(Ident),
+    CastToSource(Ident),
+}
+
+impl fmt::Display for TypeOption {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Instantiable(negated) => {
+                write!(f, "{}INSTANTIABLE", if *negated { "NOT " } else { "" })
+            }
+            Self::Final(negated) => write!(f, "{}FINAL", if *negated { "NOT " } else { "" }),
+            Self::RefUsing(ty) => write!(f, "REF USING {}", ty),
+            Self::RefFrom(attrs) => write!(f, "REF FROM ({})", display_comma_separated(attrs)),
+            Self::RefIsSystemGenerated => write!(f, "REF IS SYSTEM GENERATED"),
+            Self::CastToRef(ident) => write!(f, "CAST ( SOURCE AS REF ) WITH {}", ident),
+            Self::CastToType(ident) => write!(f, "CAST ( REF AS SOURCE ) WITH {}", ident),
+            Self::CastToDistinct(ident) => write!(f, "CAST ( SOURCE AS DISTINCT ) WITH {}", ident),
+            Self::CastToSource(ident) => write!(f, "CAST ( DISTINCT AS SOURCE ) WITH {}", ident),
         }
     }
 }
 
 /// The attribute definition of user-defined type.
-#[doc(hidden)]
+///
+/// ```txt
+/// <attribute definition> ::= <attribute name> <data type> [ <default clause> ] [ <collate clause> ]
+/// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TypeAttributeDef {
@@ -805,9 +927,9 @@ pub struct TypeAttributeDef {
     pub name: Ident,
     /// Data type.
     pub data_type: DataType,
-    /// Default clause.
+    /// Default definition.
     pub default: Option<Literal>,
-    /// Collation name.
+    /// Collation specification.
     pub collation: Option<ObjectName>,
 }
 
@@ -827,7 +949,7 @@ impl fmt::Display for TypeAttributeDef {
 /// The `ALTER TYPE` statement.
 ///
 /// ```txt
-/// ALTER TYPE <type name> <action>
+/// <alter type statement> ::= ALTER TYPE <user-defined type name> <alter type action>
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -845,6 +967,15 @@ impl fmt::Display for AlterTypeStmt {
 }
 
 /// The alter action of `ALTER TYPE` statement.
+///
+/// ```txt
+/// <alter type action> ::=
+///     <add attribute definition>
+///     | <drop attribute definition>
+///     | <add original method specification>
+///     | <add overriding method specification>
+///     | <drop method specification>
+/// ```
 #[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -857,101 +988,8 @@ impl fmt::Display for AlterTypeAction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::AddAttribute(attr) => write!(f, "ADD ATTRIBUTE {}", attr),
-            Self::DropAttribute(name) => write!(f, "DROP ATTRIBUTE {}", name),
+            Self::DropAttribute(name) => write!(f, "DROP ATTRIBUTE {} RESTRICT", name),
         }
-    }
-}
-
-// ============================================================================
-// Database definition and manipulation
-// ============================================================================
-
-/// The `CREATE DATABASE` statement (Non-standard).
-///
-/// ```txt
-/// CREATE DATABASE [ IF NOT EXISTS ] <database name> [ <options> ]
-/// ```
-#[doc(hidden)]
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct CreateDatabaseStmt {
-    /// Flag indicates that check if the schema does not exists.
-    ///
-    /// **NOTE: MySQL/PostgreSQL specific**
-    pub if_not_exists: bool,
-    /// Database name.
-    pub name: ObjectName,
-    /// Create options.
-    pub options: Vec<SqlOption>,
-}
-
-impl fmt::Display for CreateDatabaseStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "CREATE DATABASE {if_not_exists}{db_name}",
-            if_not_exists = if self.if_not_exists { "IF NOT EXISTS " } else { "" },
-            db_name = self.name,
-        )?;
-        if !self.options.is_empty() {
-            write!(f, " {}", display_separated(&self.options, " "))?;
-        }
-        Ok(())
-    }
-}
-
-/// A simple SQL option (name [ = ] value).
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct SqlOption {
-    /// Option name.
-    pub name: Ident,
-    /// Option value.
-    pub value: Literal,
-}
-
-impl fmt::Display for SqlOption {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} = {}", self.name, self.value)
-    }
-}
-
-// ============================================================================
-// Index definition and manipulation
-// ============================================================================
-
-/// The `CREATE ... INDEX <index> ... ON <table> ...` statement.
-///
-/// ```txt
-/// CREATE [ UNIQUE ] INDEX <index> [ IF NOT EXISTS ] ON <table>
-///     [ { column [ ASC | DESC ] } ... ]
-/// ```
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct CreateIndexStmt {
-    /// Flag indicates that check if the index is unique.
-    pub unique: bool,
-    /// Flag indicates that check if the index does not exists.
-    pub if_not_exists: bool,
-    /// Index name.
-    pub index: ObjectName,
-    /// Table name.
-    pub table: ObjectName,
-    /// Indexed columns.
-    pub columns: Vec<OrderBy>,
-}
-
-impl fmt::Display for CreateIndexStmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "CREATE {unique}INDEX {if_not_exists}{index_name} ON {table_name} ({columns})",
-            unique = if self.unique { "UNIQUE " } else { "" },
-            if_not_exists = if self.if_not_exists { "IF NOT EXISTS " } else { "" },
-            index_name = self.index,
-            table_name = self.table,
-            columns = display_comma_separated(&self.columns),
-        )
     }
 }
 
@@ -962,12 +1000,15 @@ impl fmt::Display for CreateIndexStmt {
 /// The `DROP { SCHEMA | TABLE | VIEW | DOMAIN | TYPE | DATABASE | INDEX } <name> ...` statement
 ///
 /// ```txt
-/// DROP { SCHEMA | TABLE | VIEW | DOMAIN | TYPE | INDEX }
-///     [ IF EXISTS ] <name>
-///     [ CASCADE | RESTRICT ]
+/// <drop schema statement> ::= DROP SCHEMA <schema name> [ IF EXISTS ] <drop behavior>
+/// <drop table statement> ::= DROP TABLE <table name> [ IF EXISTS ] <drop behavior>
+/// <drop view statement> ::= DROP VIEW <table name> [ IF EXISTS ] <drop behavior>
+/// <drop domain statement> ::= DROP DOMAIN <domain name> [ IF EXISTS ] <drop behavior>
+/// <drop data type statement> ::= DROP TYPE <type name> [ IF EXISTS ] <drop behavior>
 ///
-/// DROP INDEX [ IF EXISTS ] <index name> [ CASCADE | RESTRICT ]
-/// DROP DATABASE [ IF EXISTS ] <database name>
+/// // Not ANSI SQL
+/// <drop database statement> ::= DROP DATABASE <database name> [ IF EXISTS ] <drop behavior>
+/// <drop index statement> ::= DROP INDEX <index name> [ IF EXISTS ] <drop behavior>
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
