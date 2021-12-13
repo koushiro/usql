@@ -161,7 +161,6 @@ impl<'a, D: Dialect> Parser<'a, D> {
     pub fn parse_keywords(&mut self, keywords: &[Keyword]) -> bool {
         for &keyword in keywords {
             if let Some(token) = self.peek_next_token() {
-                let token = token.clone();
                 if !token.is_keyword(keyword) {
                     // reset cursor and return immediately
                     self.reset_peek_cursor();
