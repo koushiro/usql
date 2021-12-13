@@ -57,6 +57,35 @@ impl<'a, D: Dialect> Parser<'a, D> {
         Ok(values)
     }
 
+    /// Parses a optional comma-separated list of 1+ items accepted by `F`.
+    pub fn parse_optional_comma_separated<T, F>(
+        &mut self,
+        mut f: F,
+        expected: impl Display,
+    ) -> Result<Option<Vec<T>>, ParserError>
+    where
+        F: FnMut(&mut Parser<'a, D>) -> Result<Option<T>, ParserError>,
+    {
+        if let Some(value) = f(self)? {
+            let mut values = vec![value];
+            loop {
+                if self.next_token_if_is(&Token::Comma) {
+                    if let Some(value) = f(self)? {
+                        values.push(value);
+                    } else {
+                        let found = self.peek_token().cloned();
+                        return self.expected(expected, found);
+                    }
+                } else {
+                    break;
+                }
+            }
+            Ok(Some(values))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Parses a comma-separated list of items accepted by `F` in the parentheses.
     pub fn parse_parenthesized_comma_separated<T, F>(
         &mut self,

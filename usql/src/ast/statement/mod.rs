@@ -14,9 +14,6 @@ pub enum Stmt {
     // ========================================================================
     // Data definition
     // ========================================================================
-    /// The `CREATE SCHEMA ...` statement
-    CreateSchema(CreateSchemaStmt),
-
     /// The `CREATE TABLE ...` statement
     CreateTable(CreateTableStmt),
     /// The `ALTER TABLE ...` statement
@@ -34,15 +31,6 @@ pub enum Stmt {
     CreateType(CreateTypeStmt),
     /// The `ALTER TYPE ...` statement
     AlterType(AlterTypeStmt),
-
-    /// The `CREATE DATABASE ...` statement (Not ANSI SQL standard)
-    ///
-    /// **NOTE**: not part of the ANSI SQL standard, and thus its syntax varies among vendors.
-    CreateDatabase(CreateDatabaseStmt),
-    /// The `CREATE INDEX ...` statement (Not ANSI SQL standard)
-    ///
-    /// **NOTE**: not part of the ANSI SQL standard, and thus its syntax varies among vendors.
-    CreateIndex(CreateIndexStmt),
 
     /// The `DROP { SCHEMA | TABLE | VIEW | DOMAIN | TYPE | DATABASE | INDEX } ...` statement
     Drop(DropStmt),
@@ -75,7 +63,6 @@ pub enum Stmt {
 impl fmt::Display for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::CreateSchema(stmt) => write!(f, "{}", stmt),
             Self::CreateTable(stmt) => write!(f, "{}", stmt),
             Self::AlterTable(stmt) => write!(f, "{}", stmt),
             Self::CreateView(stmt) => write!(f, "{}", stmt),
@@ -83,8 +70,6 @@ impl fmt::Display for Stmt {
             Self::AlterDomain(stmt) => write!(f, "{}", stmt),
             Self::CreateType(stmt) => write!(f, "{}", stmt),
             Self::AlterType(stmt) => write!(f, "{}", stmt),
-            Self::CreateDatabase(stmt) => write!(f, "{}", stmt),
-            Self::CreateIndex(stmt) => write!(f, "{}", stmt),
             Self::Drop(stmt) => write!(f, "{}", stmt),
 
             Self::Insert(stmt) => write!(f, "{}", stmt),
