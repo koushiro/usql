@@ -4,28 +4,32 @@ use core::fmt;
 
 /// Location info for input.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-#[doc(hidden)]
-pub struct Location {
-    pub line: usize,
-    pub column: usize,
+pub struct LineColumn {
+    pub(crate) line: usize,
+    pub(crate) column: usize,
 }
 
-impl fmt::Display for Location {
+impl fmt::Display for LineColumn {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Line: {}, Column: {}", self.line, self.column)
     }
 }
 
-impl Default for Location {
+impl Default for LineColumn {
     fn default() -> Self {
-        Self { line: 1, column: 1 }
+        Self { line: 1, column: 0 }
     }
 }
 
-impl Location {
+impl LineColumn {
+    /// Creates a new `LineColumn` with the given line and column.
+    pub fn new(line: usize, column: usize) -> LineColumn {
+        LineColumn { line, column }
+    }
+
     pub(crate) fn advance(&mut self, ch: char) {
         if ch == '\n' {
-            self.column = 1;
+            self.column = 0;
             self.line += 1;
         } else {
             self.column += 1;
@@ -46,7 +50,7 @@ pub struct LexerError {
     /// The specified error message.
     pub message: String,
     /// The location info of error message.
-    pub location: Location,
+    pub location: LineColumn,
 }
 
 impl fmt::Display for LexerError {
