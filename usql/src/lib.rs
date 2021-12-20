@@ -38,7 +38,7 @@ pub mod sqlite;
 
 pub use self::{
     dialect::{CustomDialect, Dialect, DialectLexerConf, DialectParserConf},
-    error::{LexerError, Location, ParserError},
+    error::{LexerError, LineColumn, ParserError},
     keywords::{Keyword, KeywordDef},
     lexer::Lexer,
     parser::Parser,

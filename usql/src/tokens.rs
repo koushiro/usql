@@ -117,7 +117,7 @@ impl fmt::Display for Token {
             Token::Comment(comment) => write!(f, "{}", comment),
             Token::Number(n) => f.write_str(n),
             Token::String(s) => f.write_str(s),
-            Token::NationalString(s) => write!(f, "M'{}'", s),
+            Token::NationalString(s) => write!(f, "N'{}'", s),
             Token::BitString(s) => write!(f, "B'{}'", s),
             Token::HexString(s) => write!(f, "X'{}'", s),
             Token::Word(word) => write!(f, "{}", word),

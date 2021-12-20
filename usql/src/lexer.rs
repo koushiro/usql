@@ -9,7 +9,7 @@ use core::{iter::Peekable, str::Chars};
 
 use crate::{
     dialect::{Dialect, DialectLexerConf},
-    error::{LexerError, Location},
+    error::{LexerError, LineColumn},
     tokens::{Comment, Token, Whitespace},
 };
 
@@ -17,7 +17,7 @@ use crate::{
 pub struct Lexer<'a, D: Dialect> {
     dialect: &'a D,
     iter: Peekable<Chars<'a>>,
-    location: Location,
+    location: LineColumn,
 }
 
 impl<'a, D: Dialect> Lexer<'a, D> {
@@ -26,7 +26,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
         Self {
             dialect,
             iter: input.chars().peekable(),
-            location: Location::default(),
+            location: LineColumn::default(),
         }
     }
 
@@ -346,7 +346,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
 }
 
 fn next_while<F: Fn(&char) -> bool>(
-    loc: &mut Location,
+    loc: &mut LineColumn,
     chars: &mut Peekable<Chars<'_>>,
     predicate: F,
 ) -> String {
@@ -442,8 +442,7 @@ mod tests {
         );
         tokenize!(
             "/*/*/",
-            Err(Location { line: 1, column: 6 }
-                .into_error("Unexpected EOF while in a multi-line comment"))
+            Err(LineColumn::new(1, 5).into_error("Unexpected EOF while in a multi-line comment"))
         );
         tokenize!(
             "/*line1*/",
@@ -468,8 +467,7 @@ mod tests {
         );
         tokenize!(
             "/*--line1\nline2",
-            Err(Location { line: 2, column: 6 }
-                .into_error("Unexpected EOF while in a multi-line comment"))
+            Err(LineColumn::new(2, 5).into_error("Unexpected EOF while in a multi-line comment"))
         );
         tokenize!(
             "/*line1\n/*line2*/*/",
@@ -551,11 +549,7 @@ mod tests {
         // unterminated string literal
         tokenize!(
             "select 'foo",
-            Err(Location {
-                line: 1,
-                column: 12
-            }
-            .into_error("Unterminated string literal"))
+            Err(LineColumn::new(1, 11).into_error("Unterminated string literal"))
         );
     }
 
@@ -571,8 +565,7 @@ mod tests {
         // mismatch quotes
         tokenize!(
             "\"foo",
-            Err(Location { line: 1, column: 5 }
-                .into_error("Expected close delimiter '\"' before EOF"))
+            Err(LineColumn::new(1, 4).into_error("Expected close delimiter '\"' before EOF"))
         );
     }
 
