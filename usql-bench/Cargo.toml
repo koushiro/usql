@@ -19,3 +19,4 @@ harness = false
 criterion = "0.3"
 sqlparser = "0.12"
 usql = { path = "../usql", features = ["ansi"] }
+usql-next = { path = "../usql-next" }

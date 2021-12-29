@@ -1,0 +1,19 @@
+[package]
+name = "usql-next"
+version = "0.0.0"
+authors = ["koushiro <koushiro.cqx@gmail.com>"]
+edition = "2021"
+rust-version = "1.56"
+readme = "README.md"
+license = "Apache-2.0"
+
+documentation = "https://docs.rs/usql"
+repository = "https://github.com/koushiro/usql"
+description = "Universal SQL Lexer and Parser"
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }

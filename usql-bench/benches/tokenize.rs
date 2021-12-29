@@ -18,6 +18,13 @@ fn tokenize(c: &mut Criterion) {
             let _tokens = black_box(Lexer::new(&dialect, query).tokenize().unwrap());
         });
     });
+    group.bench_function("usql-next query1", |b| {
+        use usql_next::{AnsiDialect, Lexer};
+        let dialect = AnsiDialect::default();
+        b.iter(|| {
+            let _tokens = black_box(Lexer::new(&dialect, query).tokenize().unwrap());
+        });
+    });
 
     let query = "
         WITH derived AS (
@@ -39,6 +46,13 @@ fn tokenize(c: &mut Criterion) {
     });
     group.bench_function("usql query2", |b| {
         use usql::{ansi::AnsiDialect, Lexer};
+        let dialect = AnsiDialect::default();
+        b.iter(|| {
+            let _tokens = black_box(Lexer::new(&dialect, query).tokenize().unwrap());
+        });
+    });
+    group.bench_function("usql-next query2", |b| {
+        use usql_next::{AnsiDialect, Lexer};
         let dialect = AnsiDialect::default();
         b.iter(|| {
             let _tokens = black_box(Lexer::new(&dialect, query).tokenize().unwrap());

@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "usql",
+    "usql-next",
 ]
 exclude = ["usql-bench"]
 resolver = "2"
