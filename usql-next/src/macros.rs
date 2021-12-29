@@ -214,7 +214,7 @@ macro_rules! custom_punctuation {
 
         impl PartialEq for $name {
             fn eq(&self, other: &Self) -> bool {
-                self.span == other.span
+                self.spans == other.spans
             }
         }
 
