@@ -35,7 +35,7 @@ impl<'a> Cursor<'a> {
 
     fn next(&mut self) -> Option<char> {
         if let Some(ch) = self.iter.next() {
-            self.rest = &self.rest[1..];
+            self.rest = &self.rest[ch.len_utf8()..];
             self.location.advance(ch);
             Some(ch)
         } else {
@@ -60,7 +60,7 @@ impl<'a> Cursor<'a> {
 
     fn next_if_is(&mut self, ch: char) -> bool {
         if self.iter.next_if_eq(&ch).is_some() {
-            self.rest = &self.rest[1..];
+            self.rest = &self.rest[ch.len_utf8()..];
             self.location.advance(ch);
             true
         } else {
@@ -72,7 +72,7 @@ impl<'a> Cursor<'a> {
         let mut value = String::new();
         while let Some(ch) = self.iter.next_if(&predicate) {
             value.push(ch);
-            self.rest = &self.rest[1..];
+            self.rest = &self.rest[ch.len_utf8()..];
             self.location.advance(ch);
         }
         value
@@ -123,11 +123,11 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                             // N'...' - <national character string literal>
                             // open quote has been consumed
                             let s = self.tokenize_string_literal('\'')?;
-                            TokenTree::Literal(Literal::national_string(s))
+                            TokenTree::national_string(s)
                         } else {
                             // regular identifier starting with an "N" or "n"
                             let ident = self.tokenize_ident(n);
-                            TokenTree::Word(Word::new::<D::Keyword, _>(ident, None))
+                            TokenTree::word::<D::Keyword, _>(ident, None)
                         }
                     }
 
@@ -140,11 +140,11 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                             // X'...' - <hexadecimal character string literal>
                             // open quote has been consumed
                             let s = self.tokenize_string_literal('\'')?;
-                            TokenTree::Literal(Literal::hex_string(s))
+                            TokenTree::hex_string(s)
                         } else {
                             // regular identifier starting with an "X" or "x"
                             let ident = self.tokenize_ident(x);
-                            TokenTree::Word(Word::new::<D::Keyword, _>(ident, None))
+                            TokenTree::word::<D::Keyword, _>(ident, None)
                         }
                     }
                     // bit string literal
@@ -156,18 +156,18 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                             // B'...' - <binary character string literal>
                             // open quote has been consumed
                             let s = self.tokenize_string_literal('\'')?;
-                            TokenTree::Literal(Literal::bit_string(s))
+                            TokenTree::bit_string(s)
                         } else {
                             // regular identifier starting with an "B" or "b"
                             let ident = self.tokenize_ident(b);
-                            TokenTree::Word(Word::new::<D::Keyword, _>(ident, None))
+                            TokenTree::word::<D::Keyword, _>(ident, None)
                         }
                     }
                     // string literal
                     quote if self.dialect.lexer_conf().is_string_literal_quotation(quote) => {
                         self.cursor.next(); // consume the open quotation mark of string literal
                         let s = self.tokenize_string_literal(quote)?;
-                        TokenTree::Literal(Literal::string(s))
+                        TokenTree::string(s)
                     }
                     // delimited (quoted) identifier
                     quote
@@ -178,16 +178,20 @@ impl<'a, D: Dialect> Lexer<'a, D> {
                     {
                         self.cursor.next(); // consume the open quotation mark of delimited identifier
                         let ident = self.tokenize_delimited_ident(quote)?;
-                        TokenTree::Word(Word::new::<D::Keyword, _>(ident, Some(quote)))
+                        TokenTree::word::<D::Keyword, _>(ident, Some(quote))
                     }
                     // identifier or keyword
                     ch if self.dialect.lexer_conf().is_identifier_start(ch) => {
                         self.cursor.next(); // consume the identifier start character
                         let ident = self.tokenize_ident(ch);
-                        TokenTree::Word(Word::new::<D::Keyword, _>(ident, None))
+                        TokenTree::word::<D::Keyword, _>(ident, None)
                     }
                     // number or punct ('.')
                     ch if ch.is_ascii_digit() || ch == '.' => self.tokenize_number(),
+                    ch if is_delimiter(ch) => {
+                        self.cursor.next();
+                        TokenTree::punct(ch, Spacing::Alone)
+                    }
                     _ => TokenTree::Punct(self.tokenize_punct()?),
                 },
                 None => break,
@@ -303,7 +307,7 @@ impl<'a, D: Dialect> Lexer<'a, D> {
     }
 
     fn tokenize_punct_char(&mut self) -> Result<char, LexerError> {
-        const RECOGNIZED: &str = "~!@#$%^&*()-=+[]{}|;:,<.>/?'";
+        const RECOGNIZED: &str = "~!@#$%^&*-=+|;:,<.>/?'";
         match self.cursor.peek() {
             Some(&ch) if RECOGNIZED.contains(ch) => Ok(ch),
             _ => self.tokenize_error("Unexpected EOF or punctuation character"),
@@ -316,6 +320,10 @@ impl<'a, D: Dialect> Lexer<'a, D> {
             location: self.cursor.location,
         })
     }
+}
+
+fn is_delimiter(ch: char) -> bool {
+    ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '{' || ch == '}'
 }
 
 #[cfg(test)]
@@ -348,10 +356,10 @@ mod tests {
         tokenize!(
             " line1\nline2\t\rline3\r\nline4\r",
             Ok(vec![
-                TokenTree::Word(Word::new::<AnsiKeyword, _>("line1", None)),
-                TokenTree::Word(Word::new::<AnsiKeyword, _>("line2", None)),
-                TokenTree::Word(Word::new::<AnsiKeyword, _>("line3", None)),
-                TokenTree::Word(Word::new::<AnsiKeyword, _>("line4", None)),
+                TokenTree::word::<AnsiKeyword, _>("line1", None),
+                TokenTree::word::<AnsiKeyword, _>("line2", None),
+                TokenTree::word::<AnsiKeyword, _>("line3", None),
+                TokenTree::word::<AnsiKeyword, _>("line4", None),
             ])
         );
     }
@@ -361,16 +369,13 @@ mod tests {
         // single-line comment
         tokenize!(
             "0--this is single line comment\n1",
-            Ok(vec![
-                TokenTree::Literal(Literal::number("0")),
-                TokenTree::Literal(Literal::number("1")),
-            ])
+            Ok(vec![TokenTree::number("0"), TokenTree::number("1")])
         );
 
         // single-line comment at eof
         tokenize!(
             "0-- this is single line comment",
-            Ok(vec![TokenTree::Literal(Literal::number("0"))])
+            Ok(vec![TokenTree::number("0")])
         );
     }
 
@@ -400,35 +405,144 @@ mod tests {
     }
 
     #[test]
+    fn tokenize_number_literal() {
+        tokenize!(
+            "1234567890 0987654321",
+            Ok(vec![
+                TokenTree::Literal(Literal::number("1234567890")),
+                TokenTree::Literal(Literal::number("0987654321")),
+            ])
+        );
+
+        tokenize!(
+            ".1 12345.6789 0. .",
+            Ok(vec![
+                TokenTree::Literal(Literal::number(".1")),
+                TokenTree::Literal(Literal::number("12345.6789")),
+                TokenTree::Literal(Literal::number("0.")),
+                TokenTree::Punct(Punct::new('.', Spacing::Alone)),
+            ])
+        );
+    }
+
+    #[test]
+    fn tokenize_string_literal() {
+        tokenize!("'hello'", Ok(vec![TokenTree::string("hello")]));
+
+        tokenize!("N'你好'", Ok(vec![TokenTree::national_string("你好")]));
+        tokenize!("n'你好'", Ok(vec![TokenTree::national_string("你好")]));
+
+        tokenize!("X'abcdef'", Ok(vec![TokenTree::hex_string("abcdef")]));
+        tokenize!("x'abcdef'", Ok(vec![TokenTree::hex_string("abcdef")]));
+
+        tokenize!("B'01010101'", Ok(vec![TokenTree::bit_string("01010101")]));
+        tokenize!("b'01010101'", Ok(vec![TokenTree::bit_string("01010101")]));
+
+        // newline in string literal
+        tokenize!(
+            "'foo\r\nbar\nbaz'",
+            Ok(vec![TokenTree::string("foo\r\nbar\nbaz")])
+        );
+
+        // invalid string literal
+        tokenize!(
+            "\nمصطفىh",
+            Err(LexerError {
+                message: "Unexpected EOF or punctuation character".into(),
+                location: LineColumn::new(2, 0)
+            })
+        );
+
+        // unterminated string literal
+        tokenize!(
+            "select 'foo",
+            Err(LexerError {
+                message: "Unterminated string literal".into(),
+                location: LineColumn::new(1, 11)
+            })
+        );
+    }
+
+    #[test]
+    fn tokenize_delimited_ident() {
+        use crate::ansi::AnsiKeyword;
+
+        tokenize!(
+            "\"foo\"",
+            Ok(vec![TokenTree::word::<AnsiKeyword, _>("foo", Some('\"'))])
+        );
+
+        // mismatch quotes
+        tokenize!(
+            "\"foo",
+            Err(LexerError {
+                message: "Expected close delimiter '\"' before EOF".into(),
+                location: LineColumn::new(1, 4)
+            })
+        );
+    }
+
+    #[test]
+    fn tokenize_string_concat() {
+        use crate::ansi::AnsiKeyword;
+        tokenize!(
+            "SELECT 'a' || 'b'",
+            Ok(vec![
+                TokenTree::keyword::<AnsiKeyword, _>("SELECT").unwrap(),
+                TokenTree::string("a"),
+                TokenTree::punct('|', Spacing::Joint),
+                TokenTree::punct('|', Spacing::Alone),
+                TokenTree::string("b"),
+            ])
+        );
+    }
+
+    #[test]
+    fn tokenize_bitwise_op() {
+        use crate::ansi::AnsiKeyword;
+        tokenize!(
+            "SELECT one | two ^ three",
+            Ok(vec![
+                TokenTree::keyword::<AnsiKeyword, _>("SELECT").unwrap(),
+                TokenTree::word::<AnsiKeyword, _>("one", None),
+                TokenTree::punct('|', Spacing::Alone),
+                TokenTree::word::<AnsiKeyword, _>("two", None),
+                TokenTree::punct('^', Spacing::Alone),
+                TokenTree::word::<AnsiKeyword, _>("three", None),
+            ])
+        )
+    }
+
+    #[test]
     fn tokenize_simple_select() {
         use crate::ansi::AnsiKeyword;
 
         tokenize!(
             "SELECT * FROM customer WHERE id = 1",
             Ok(vec![
-                TokenTree::Word(Word::keyword::<AnsiKeyword, _>("SELECT").unwrap()),
-                TokenTree::Punct(Punct::new('*', Spacing::Alone)),
-                TokenTree::Word(Word::keyword::<AnsiKeyword, _>("FROM").unwrap()),
-                TokenTree::Word(Word::new::<AnsiKeyword, _>("customer", None)),
-                TokenTree::Word(Word::keyword::<AnsiKeyword, _>("WHERE").unwrap()),
-                TokenTree::Word(Word::new::<AnsiKeyword, _>("id", None)),
-                TokenTree::Punct(Punct::new('=', Spacing::Alone)),
-                TokenTree::Literal(Literal::number("1"))
+                TokenTree::keyword::<AnsiKeyword, _>("SELECT").unwrap(),
+                TokenTree::punct('*', Spacing::Alone),
+                TokenTree::keyword::<AnsiKeyword, _>("FROM").unwrap(),
+                TokenTree::word::<AnsiKeyword, _>("customer", None),
+                TokenTree::keyword::<AnsiKeyword, _>("WHERE").unwrap(),
+                TokenTree::word::<AnsiKeyword, _>("id", None),
+                TokenTree::punct('=', Spacing::Alone),
+                TokenTree::number("1")
             ])
         );
 
         tokenize!(
             "SELECT * FROM customer WHERE salary != 'Not Provided'",
             Ok(vec![
-                TokenTree::Word(Word::keyword::<AnsiKeyword, _>("SELECT").unwrap()),
-                TokenTree::Punct(Punct::new('*', Spacing::Alone)),
-                TokenTree::Word(Word::keyword::<AnsiKeyword, _>("FROM").unwrap()),
-                TokenTree::Word(Word::new::<AnsiKeyword, _>("customer", None)),
-                TokenTree::Word(Word::keyword::<AnsiKeyword, _>("WHERE").unwrap()),
-                TokenTree::Word(Word::new::<AnsiKeyword, _>("salary", None)),
-                TokenTree::Punct(Punct::new('!', Spacing::Joint)),
-                TokenTree::Punct(Punct::new('=', Spacing::Alone)),
-                TokenTree::Literal(Literal::string("Not Provided"))
+                TokenTree::keyword::<AnsiKeyword, _>("SELECT").unwrap(),
+                TokenTree::punct('*', Spacing::Alone),
+                TokenTree::keyword::<AnsiKeyword, _>("FROM").unwrap(),
+                TokenTree::word::<AnsiKeyword, _>("customer", None),
+                TokenTree::keyword::<AnsiKeyword, _>("WHERE").unwrap(),
+                TokenTree::word::<AnsiKeyword, _>("salary", None),
+                TokenTree::punct('!', Spacing::Joint),
+                TokenTree::punct('=', Spacing::Alone),
+                TokenTree::string("Not Provided")
             ])
         );
 

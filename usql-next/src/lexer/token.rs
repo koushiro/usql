@@ -19,7 +19,6 @@ pub enum TokenTree {
     Word(Word),
     /// A single punctuation character (`+`, `,`, `$`, etc.).
     Punct(Punct),
-
     /// A character string literal (`'hello'`), national character string literal (`N'你好'`),
     /// hexadecimal string literal (X'deadbeef'), bit string literal (B'101010'),
     /// or number literal (`2.3`), etc.
@@ -29,9 +28,9 @@ pub enum TokenTree {
 impl fmt::Display for TokenTree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TokenTree::Word(word) => fmt::Display::fmt(word, f),
-            TokenTree::Punct(punct) => fmt::Display::fmt(punct, f),
-            TokenTree::Literal(literal) => fmt::Display::fmt(literal, f),
+            Self::Word(word) => fmt::Display::fmt(word, f),
+            Self::Punct(punct) => fmt::Display::fmt(punct, f),
+            Self::Literal(literal) => fmt::Display::fmt(literal, f),
         }
     }
 }
@@ -55,22 +54,62 @@ impl From<Literal> for TokenTree {
 }
 
 impl TokenTree {
+    /// Creates a SQL `Keyword` or an optionally quoted SQL `Identifier`.
+    pub fn word<K: KeywordDef, W: Into<String>>(value: W, quote: Option<char>) -> Self {
+        Self::Word(Word::new::<K, _>(value, quote))
+    }
+
+    /// Creates a SQL `Keyword`.
+    pub fn keyword<K: KeywordDef, W: Into<String>>(value: W) -> Option<Self> {
+        Word::keyword::<K, _>(value).map(Self::Word)
+    }
+
+    /// Creates a new `Punct` from the given character and spacing.
+    pub fn punct(ch: char, spacing: Spacing) -> Self {
+        Self::Punct(Punct::new(ch, spacing))
+    }
+
+    /// Creates a new `Number Literal`.
+    pub fn number<S: Into<String>>(value: S) -> Self {
+        Self::Literal(Literal::number(value))
+    }
+
+    /// Creates a new `String Literal`.
+    pub fn string<S: Into<String>>(value: S) -> Self {
+        Self::Literal(Literal::string(value))
+    }
+
+    /// Creates a new `National String Literal`.
+    pub fn national_string<S: Into<String>>(value: S) -> Self {
+        Self::Literal(Literal::national_string(value))
+    }
+
+    /// Creates a new `Hexadecimal String Literal`.
+    pub fn hex_string<S: Into<String>>(value: S) -> Self {
+        Self::Literal(Literal::hex_string(value))
+    }
+
+    /// Creates a new `Bit String Literal`.
+    pub fn bit_string<S: Into<String>>(value: S) -> Self {
+        Self::Literal(Literal::bit_string(value))
+    }
+
     /// Returns the span of this tree, delegating to the `span` method of
     /// the contained token.
     pub fn span(&self) -> Span {
         match self {
-            TokenTree::Word(t) => t.span(),
-            TokenTree::Punct(t) => t.span(),
-            TokenTree::Literal(t) => t.span(),
+            Self::Word(t) => t.span(),
+            Self::Punct(t) => t.span(),
+            Self::Literal(t) => t.span(),
         }
     }
 
     /// Configures the span for *only this token*.
     pub fn set_span(&mut self, span: Span) {
         match self {
-            TokenTree::Word(t) => t.set_span(span),
-            TokenTree::Punct(t) => t.set_span(span),
-            TokenTree::Literal(t) => t.set_span(span),
+            Self::Word(t) => t.set_span(span),
+            Self::Punct(t) => t.set_span(span),
+            Self::Literal(t) => t.set_span(span),
         }
     }
 }
