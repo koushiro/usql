@@ -17,6 +17,6 @@ harness = false
 
 [dev-dependencies]
 criterion = "0.3"
-sqlparser = "0.12"
+sqlparser = "0.13"
 usql = { path = "../usql", features = ["ansi"] }
 usql-next = { path = "../usql-next" }
