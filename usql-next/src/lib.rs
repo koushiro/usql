@@ -1,6 +1,6 @@
-//! # usql
+//! # uSQL
 //!
-//! uSQL is a universal SQL Lexer and Parser.
+//! uSQL is a universal SQL lexer and parser library.
 
 #![warn(missing_docs)]
 #![warn(unused_imports)]
@@ -12,19 +12,15 @@ extern crate alloc;
 #[macro_use]
 mod macros;
 
+// pub mod ast;
 mod dialect;
 mod error;
-// mod parse;
-mod token;
-
-mod ansi;
-
-mod ast;
 mod lexer;
 mod span;
+mod token;
 
 pub use self::{
-    ansi::AnsiDialect,
+    dialect::{CustomDialect, Dialect, DialectLexerConf, DialectParserConf},
     error::{LexerError, ParserError},
     lexer::Lexer,
     span::{Span, Spanned},

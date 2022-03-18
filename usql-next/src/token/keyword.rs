@@ -1,7 +1,9 @@
+use core::fmt::Debug;
+
 /// Marker trait for keyword definition of a SQL dialect.
 pub trait KeywordDef
 where
-    Self: Clone + PartialEq + ::core::fmt::Debug + 'static,
+    Self: Clone + PartialEq + Debug + 'static,
 {
     /// All sorted keywords for the definition.
     const KEYWORDS: &'static [Keyword];

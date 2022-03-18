@@ -17,7 +17,7 @@
 [deps-svg]: https://deps.rs/repo/github/koushiro/usql/status.svg
 [deps-url]: https://deps.rs/repo/github/koushiro/usql
 
-uSQL is a universal SQL Lexer and Parser, written in Rust.
+uSQL is a universal SQL Lexer and Parser library, written in Rust.
 
 ## Acknowledgement
 

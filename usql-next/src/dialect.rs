@@ -92,7 +92,9 @@ pub trait DialectLexerConf: Clone + Debug {
     }
 }
 
+impl DialectLexerConf for () {}
+
 /// The configuration of the parser part of dialect.
 pub trait DialectParserConf: Clone + Debug {}
 
-impl DialectLexerConf for () {}
+impl DialectParserConf for () {}

@@ -320,14 +320,12 @@ impl PartialEq for Literal {
 
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.inner {
-            LiteralInner::Number(ref s) => f.debug_tuple("Number").field(s).finish(),
-            LiteralInner::String(ref s) => f.debug_tuple("String").field(s).finish(),
-            LiteralInner::NationalString(ref s) => {
-                f.debug_tuple("NationalString").field(s).finish()
-            }
-            LiteralInner::HexString(ref s) => f.debug_tuple("HexString").field(s).finish(),
-            LiteralInner::BitString(ref s) => f.debug_tuple("BitString").field(s).finish(),
+        match &self.inner {
+            LiteralInner::Number(s) => f.debug_tuple("Number").field(s).finish(),
+            LiteralInner::String(s) => f.debug_tuple("String").field(s).finish(),
+            LiteralInner::NationalString(s) => f.debug_tuple("NationalString").field(s).finish(),
+            LiteralInner::HexString(s) => f.debug_tuple("HexString").field(s).finish(),
+            LiteralInner::BitString(s) => f.debug_tuple("BitString").field(s).finish(),
         }
     }
 }

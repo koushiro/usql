@@ -10,9 +10,11 @@ test:
 	cargo test --all
 
 fmt-check:
+	taplo fmt --check
 	cargo +nightly fmt --all -- --check
 
 fmt:
+	taplo fmt
 	cargo +nightly fmt --all
 
 lint:

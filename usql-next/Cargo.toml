@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 documentation = "https://docs.rs/usql"
 repository = "https://github.com/koushiro/usql"
-description = "Universal SQL Lexer and Parser"
+description = "Universal SQL lexer and parser library"
 
 [features]
 default = ["std"]
