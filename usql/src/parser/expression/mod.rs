@@ -315,8 +315,7 @@ impl<'a, D: Dialect> Parser<'a, D> {
 
     fn next_is_query(&mut self) -> bool {
         self.peek_token()
-            .map(|token| token.is_one_of_keywords(&[Keyword::SELECT, Keyword::WITH]))
-            .flatten()
+            .and_then(|token| token.is_one_of_keywords(&[Keyword::SELECT, Keyword::WITH]))
             .is_some()
     }
 }

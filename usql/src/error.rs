@@ -63,7 +63,7 @@ impl fmt::Display for LexerError {
 impl std::error::Error for LexerError {}
 
 /// Parser error
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ParserError {
     /// Tokenize error.
     TokenizeError(String),
